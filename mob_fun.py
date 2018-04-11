@@ -43,8 +43,12 @@ GOAL_TYPE = "apple"
 GOAL_REWARD = 100
 ARENA_WIDTH = 60
 ARENA_BREADTH = 60
+# MOB_TYPE = "Spider"  # Change for fun, but note that spawning conditions have to be correct - eg spiders will require darker conditions.
+
 MOB_TYPE = "Endermite"  # Change for fun, but note that spawning conditions have to be correct - eg spiders will require darker conditions.
-action_space = ['0', '45','90', '135','180','-45', '-90','-135']
+# action_space = ['0', '45','90', '135','180','-45', '-90','-135']
+action_space = ['0', '90', '180','-90']
+
 n_actions = len(action_space)
 n_features = 20*2 + 4 + 2*NUM_GOALS
 
@@ -106,8 +110,8 @@ def execute_step(agent_host,world_state, action):
     reward = 0
     done = False
     time.sleep(0.05)
-    s_ = np.array([])
-    if world_state.number_of_observations_since_last_state > 0:
+    s_ = np.zeros(n_features)
+    if len(world_state.observations)> 0:
         msg = world_state.observations[-1].text
         s_ = get_ob(msg)
     if world_state.number_of_rewards_since_last_state > 0:
@@ -116,40 +120,6 @@ def execute_step(agent_host,world_state, action):
 
 
     return s_, reward, done
-
-def run_maze(observation,agent_host):
-    step = 0
-    for episode in range(300):
-        # initial observation
-        # observation = env.reset()
-
-        while True:
-            # fresh env
-            # env.render()
-
-            # RL choose action based on observation
-            action = RL.choose_action(observation)
-
-            # RL take action and get next observation and reward
-            observation_, reward, done = execute_step(agent_host,world_state,action)
-            print observation,observation_
-            RL.store_transition(observation, action, reward, observation_)
-
-            if (step > 200) and (step % 5 == 0):
-                RL.learn()
-
-            # swap observation
-            observation = observation_
-
-            # break while loop when end of this episode
-            if done:
-                break
-            step += 1
-
-    # end of game
-    print('game over')
-
-
 
 def getItemXML():
     ''' Build an XML string that contains some randomly positioned goal items'''
@@ -355,7 +325,14 @@ else:
 current_yaw = 0
 best_yaw = 0
 current_life = 0
-
+RL = DeepQNetwork(n_actions, n_features,
+                      learning_rate=0.01,
+                      reward_decay=0.9,
+                      e_greedy=0.9,
+                      replace_target_iter=200,
+                      memory_size=2000,
+                      )
+step = 0
 for iRepeat in range(num_reps):
     mission_xml = getMissionXML(MOB_TYPE + " Apocalypse #" + str(iRepeat))
     my_mission = MalmoPython.MissionSpec(mission_xml,validate)
@@ -381,24 +358,20 @@ for iRepeat in range(num_reps):
         time.sleep(0.1)
         world_state = agent_host.getWorldState()
 
+
     agent_host.sendCommand("move 1")    # run!
     # main loop:
     total_reward = 0
     total_commands = 0
     flash = False
-    RL = DeepQNetwork(n_actions, n_features,
-                      learning_rate=0.01,
-                      reward_decay=0.9,
-                      e_greedy=0.9,
-                      replace_target_iter=200,
-                      memory_size=2000,
-                      )
-    step = 0
+
     while world_state.is_mission_running:
         world_state = agent_host.getWorldState()
+        observation = np.zeros(n_features)
         if world_state.number_of_observations_since_last_state > 0:
             msg = world_state.observations[-1].text
             ob = json.loads(msg)
+            observation = get_ob(msg)
             # if "Yaw" in ob:
             #     current_yaw = ob[u'Yaw']
             if "Life" in ob:
@@ -410,15 +383,15 @@ for iRepeat in range(num_reps):
             if "entities" in ob:
                 entities = [EntityInfo(**k) for k in ob["entities"]]
                 drawMobs(entities, flash)
-                best_yaw = getBestAngle(entities, current_yaw, current_life)
-                difference = best_yaw - current_yaw;
-                while difference < -180:
-                    difference += 360;
-                while difference > 180:
-                    difference -= 360;
-                difference /= 180.0;
-                agent_host.sendCommand("turn " + str(difference))
-                total_commands += 1
+                # best_yaw = getBestAngle(entities, current_yaw, current_life)
+                # difference = best_yaw - current_yaw;
+                # while difference < -180:
+                #     difference += 360;
+                # while difference > 180:
+                #     difference -= 360;
+                # difference /= 180.0;
+                # agent_host.sendCommand("turn " + str(difference))
+                # total_commands += 1
         # if world_state.number_of_rewards_since_last_state > 0:
         #     # A reward signal has come in - see what it is:
         #     total_reward += world_state.rewards[-1].getValue()
@@ -426,16 +399,16 @@ for iRepeat in range(num_reps):
         flash = False
 
 
-        observation = get_ob(msg)
+        # observation = get_ob(msg)
 
         # RL choose action based on observation
         action = RL.choose_action(observation)
 
         # RL take action and get next observation and reward
         observation_, reward, done = execute_step(agent_host,world_state, action)
-        print observation, observation_
+        total_commands += 1
         RL.store_transition(observation, action, reward, observation_)
-
+        total_reward += reward
         if (step > 200) and (step % 5 == 0):
             RL.learn()
 
@@ -460,8 +433,3 @@ for iRepeat in range(num_reps):
 
     print "We stayed alive for " + str(total_commands) + " commands, and scored " + str(total_reward)
     time.sleep(1) # Give the mod a little time to prepare for the next mission.
-
-
-
-
-
