@@ -379,6 +379,10 @@ def getMissionXML(summary):
                 <RewardForMissionEnd rewardForDeath="-3">
                     <Reward description="achieve_goal" reward="0" />
                 </RewardForMissionEnd>
+                <VideoProducer viewpoint="2">
+                    <Width>860</Width>
+                    <Height>480</Height>
+                </VideoProducer>
             </AgentHandlers>
         </AgentSection>
     </Mission>'''
@@ -600,7 +604,7 @@ with tf.Session() as sess:
 
                     # take action and get next observation and reward
                     s_, r,d, DamageTaken = step(s,agent_host, a, DamageTaken)
-                    # print("action:",a,"reward:",r)
+                    print("action:",a,"reward:",r)
                     # print("s_:",s_)
                     # for ss in s_:
                     #     if ss!=255:
@@ -639,15 +643,19 @@ with tf.Session() as sess:
         rList.append(rAll)
         i+=1
 
-        print("game:",i,"rAll:",rAll,"totalsteps:",total_steps)
+        print("game:",i,"rAll:",rAll,"Time used:",(time.clock() - start))
         # Periodically save the model.
         if i % 1000 == 0:
             saver.save(sess, path + '/model-' + str(i) + '.ckpt')
             print("Saved Model")
-        if i% 20 ==0:
+        if i% 200 ==0:
+            plt.close('all')
             rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
             rMean = np.average(rMat, 1)
+            plt.ylabel('Reward')
+            plt.xlabel('Training Steps')
             plt.plot(rMean)
+            plt.show()
         if len(rList) % 10 == 0:
             print(total_steps, np.mean(rList[-10:]), epsilon)
 
@@ -659,6 +667,10 @@ with tf.Session() as sess:
     saver.save(sess, path + '/model-' + str(i) + '.ckpt')
 print("Percent of succesful episodes: " + str(sum(rList) / num_episodes) + "%")
 
-rMat = np.resize(np.array(rList),[len(rList)//100,100])
-rMean = np.average(rMat,1)
+plt.close('all')
+rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
+rMean = np.average(rMat, 1)
+plt.ylabel('Reward')
+plt.xlabel('Training Steps')
 plt.plot(rMean)
+plt.show()
