@@ -236,7 +236,7 @@ annealing_steps = 10000. #How many steps of training to reduce startE to endE.
 num_episodes = 10000 #How many episodes of game environment to train network with.
 pre_train_steps = 10000 #How many steps of random actions before training begins.
 max_epLength = 50 #The max allowed length of our episode.
-load_model = False #Whether to load a saved model.
+load_model = True #Whether to load a saved model.
 path = "./dqn" #The path to save our model to.
 h_size = 512 #The size of the final convolutional layer before splitting it into Advantage and Value streams.
 tau = 0.001 #Rate to update target network toward primary network
@@ -290,6 +290,10 @@ ARENA_WIDTH = 60
 ARENA_BREADTH = 60
 MOB_TYPE = "Endermite"  # Change for fun, but note that spawning conditions have to be correct - eg spiders will require darker conditions.
 action_space = ["movenorth 1", "movesouth 1", "movewest 1", "moveeast 1"]
+# a=[i for i in range(0,190,10)]
+# b=[-i for i in range(10,180,10)]
+# action_space = [ str(i) for i in a+b ]
+# action_space=np.arange(-1,1.1,0.25)
 n_actions = len(action_space)
 
 # Display parameters:
@@ -341,6 +345,7 @@ def getMissionXML(summary):
                     <StartTime>13000</StartTime>
                     <AllowPassageOfTime>false</AllowPassageOfTime>
                 </Time>
+                <Weather>clear</Weather>
                 <AllowSpawning>true</AllowSpawning>
                 <AllowedMobs>''' + MOB_TYPE + '''</AllowedMobs>
             </ServerInitialConditions>
@@ -362,7 +367,7 @@ def getMissionXML(summary):
         <AgentSection mode="Survival">
             <Name>'''+AGENT_TYPE+'''</Name>
             <AgentStart>
-                <Placement x="0.5" y="207.0" z="0.5"/>
+                <Placement x="0.5" y="207.0" z="0.5" pitch="90"/>
                 <Inventory>
                 </Inventory>
             </AgentStart>
@@ -379,7 +384,7 @@ def getMissionXML(summary):
                 <RewardForMissionEnd rewardForDeath="-3">
                     <Reward description="achieve_goal" reward="0" />
                 </RewardForMissionEnd>
-                <VideoProducer viewpoint="2">
+                <VideoProducer viewpoint="1">
                     <Width>860</Width>
                     <Height>480</Height>
                 </VideoProducer>
@@ -471,7 +476,7 @@ def get_ob(msg):
     return state
 
 # RL take action and get next observation and reward
-def step(s,agent_host,a,DamageTaken):
+def step(s,agent_host,a,DamageTaken,FoodRemain):
     # ["movenorth 1", "movesouth 1", "movewest 1", "moveeast 1"]
     s_=s
     reward = -3
@@ -496,6 +501,11 @@ def step(s,agent_host,a,DamageTaken):
             try:
                 # A reward signal has come in - see what it is:
                 reward = world_state.rewards[-1].getValue()
+                print("get reward from world state:",reward)
+                if reward==0 and "Food" in ob:
+                    if ob[u'Food'] < FoodRemain[-1]:
+                        reward += GOAL_REWARD * (FoodRemain[-1]-ob[u'Food']) / 20
+                        FoodRemain.append(ob[u'Food'])
             except:
                 pass
 
@@ -511,7 +521,7 @@ def step(s,agent_host,a,DamageTaken):
     else:
         done=True
 
-    return s_, reward,done,DamageTaken
+    return s_, reward,done,DamageTaken,FoodRemain
 
 ###############################################################################################################
 ##########################################################################################################################
@@ -579,6 +589,9 @@ with tf.Session() as sess:
         DamageTaken = []
         if "DamageTaken" in ob:
             DamageTaken.append(ob[u'DamageTaken'])
+        FoodRemain=[]
+        if "Food" in ob:
+            FoodRemain.append(ob[u'Food'])
 
         while world_state.is_mission_running:  # in one episode
             world_state = agent_host.getWorldState()
@@ -603,7 +616,7 @@ with tf.Session() as sess:
                         a = sess.run(mainQN.predict, feed_dict={mainQN.scalarInput: [s]})[0]
 
                     # take action and get next observation and reward
-                    s_, r,d, DamageTaken = step(s,agent_host, a, DamageTaken)
+                    s_, r,d, DamageTaken,FoodRemain = step(s,agent_host, a, DamageTaken,FoodRemain)
                     print("action:",a,"reward:",r)
                     # print("s_:",s_)
                     # for ss in s_:
@@ -645,24 +658,24 @@ with tf.Session() as sess:
 
         print("game:",i,"rAll:",rAll,"Time used:",(time.clock() - start))
         # Periodically save the model.
-        if i % 1000 == 0:
+        if i % 50 == 0:
             saver.save(sess, path + '/model-' + str(i) + '.ckpt')
             print("Saved Model")
-        if i% 200 ==0:
+        if i% 20 ==0:
             plt.close('all')
-            rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
+            rMat = np.resize(np.array(rList), [len(rList) // 10, 10])
             rMean = np.average(rMat, 1)
             plt.ylabel('Reward')
             plt.xlabel('Training Steps')
             plt.plot(rMean)
-            plt.show()
+            plt.show(block=False)
         if len(rList) % 10 == 0:
             print(total_steps, np.mean(rList[-10:]), epsilon)
 
 
-    for error in world_state.errors:
-        print("Error:", error.text)
-    time.sleep(1)  # Give the mod a little time to prepare for the next mission.
+        for error in world_state.errors:
+            print("Error:", error.text)
+        time.sleep(1)  # Give the mod a little time to prepare for the next mission.
 
     saver.save(sess, path + '/model-' + str(i) + '.ckpt')
 print("Percent of succesful episodes: " + str(sum(rList) / num_episodes) + "%")
