@@ -12,8 +12,8 @@ from operator import mul
 
 class RL():
     def __init__(self, env):
-        self.batch_size = 32  # How many experiences to use for each training step.
-        self.update_freq = 4  # How often to perform a training step.
+        self.batch_size = 512  # How many experiences to use for each training step.
+        self.update_freq = 10  # How often to perform a training step.
         self.learning_rate = 0.0001
         self.y = .99  # Discount factor on the target Q-values
         self.startE = 1  # Starting chance of random action
@@ -61,7 +61,8 @@ class RL():
             print('Loading Model...')
             ckpt = tf.train.get_checkpoint_state(self.path)
             self.saver.restore(self.sess, ckpt.model_checkpoint_path)
-            self.e = self.endE
+            self.e = 0
+            self.pre_train_steps = 0
 
     class Qnetwork():
         def __init__(self, h_size, n_actions, learning_rate):
@@ -71,11 +72,16 @@ class RL():
             # It then resizes it and processes it through four convolutional layers.
             self.scalarInput = tf.placeholder(shape=[None, h_size ], dtype=tf.float32)
 
-            self.streamA = slim.flatten(self.scalarInput)  # streamAC)
-            self.streamV = slim.flatten(self.scalarInput)  # streamVC)
+            w_initializer, b_initializer = tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)
+
+            self.l1 = tf.layers.dense(self.scalarInput, 50, tf.nn.relu, kernel_initializer=w_initializer, bias_initializer=b_initializer)
+
+
+            self.streamA = slim.flatten(self.l1)  # streamAC)
+            self.streamV = slim.flatten(self.l1)  # streamVC)
             xavier_init = tf.contrib.layers.xavier_initializer()
-            self.AW = tf.Variable(xavier_init([h_size , self.n_actions]))
-            self.VW = tf.Variable(xavier_init([h_size , 1]))
+            self.AW = tf.Variable(xavier_init([50 , self.n_actions]))
+            self.VW = tf.Variable(xavier_init([50 , 1]))
             self.Advantage = tf.matmul(self.streamA, self.AW)
             self.Value = tf.matmul(self.streamV, self.VW)
 
@@ -131,8 +137,6 @@ class RL():
         if d == True:
             self.myBuffer.add(self.episodeBuffer.buffer)
 
-
-
     def updateTargetGraph(self, tfVars, tau):
         total_vars = len(tfVars)
         op_holder = []
@@ -157,9 +161,9 @@ class RL():
 
         def add(self, experience):
             if len(self.buffer) + len(experience) >= self.buffer_size:
-                offset = np.random.randint(0, int(len(self.buffer)/len(experience)))
-                self.buffer = self.buffer[0:(offset-1)*len(experience)]+self.buffer[offset*len(experience):]
-                # self.buffer[0:(len(experience) + len(self.buffer)) - self.buffer_size] = []
+                # offset = np.random.randint(0, int(len(self.buffer)/len(experience)))
+                # self.buffer = self.buffer[0:(offset-1)*len(experience)]+self.buffer[offset*len(experience):]
+                self.buffer[0:(len(experience) + len(self.buffer)) - self.buffer_size] = []
             self.buffer.extend(experience)
 
         def sample(self, size):

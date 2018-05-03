@@ -6,11 +6,12 @@ from functools import reduce
 from operator import mul
 from Double_Dueling_DQN import RL
 
-
+# env = gym.make('CartPole-v0')
 env = gym.make('LunarLander-v2')
 env.reset()
 RL = RL(env)
-show = False# Whether to show the game or not
+show = False # Whether to show the game or not
+reward_path = 'rlist'
 
 def processState(states):
     return np.reshape(states, [reduce(mul, list(env.observation_space.shape), 1)])
@@ -56,6 +57,8 @@ while True:
     # Periodically save the model.
     if i > 0 and i % 1000 == 0:
         RL.save_model(i)
+
+    if i > 0 and i % 100 == 0:
         plt.close('all')
         rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
         rMean = np.average(rMat, 1)
@@ -67,6 +70,7 @@ while True:
             plt.show(block=False)
         plt.savefig("training.png")
 
+        np.save(reward_path,np.array(rList))
 
     if i % 10 == 0:
         print(RL.total_steps, np.mean(rList[-10:]), RL.e)
