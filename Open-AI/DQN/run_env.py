@@ -69,7 +69,7 @@ for i in range(num_episodes):
 
     if i > 0 and i % 100 == 0:
         plt.close('all')
-        rMat = np.resize(np.array(rList), [len(rList) // 10, 10])
+        rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
         rMean = np.average(rMat, 1)
         plt.plot(rMean)
         plt.xlabel('Training episodes (hundreds)')
