@@ -133,7 +133,7 @@ class LunarLander(gym.Env):
         CHUNKS = 19#rand_CHUNKS#11
         height = self.np_random.uniform(0, H/2, size=(CHUNKS+1,) )
         chunk_x  = [W/(CHUNKS-1)*i for i in range(CHUNKS)]
-        print (chunk_x)
+        # print (chunk_x)
         self.helipad_x1 = chunk_x[CHUNKS//2-1]
         self.helipad_x2 = chunk_x[CHUNKS//2+1]
         self.helipad_y  = H/4
@@ -159,7 +159,10 @@ class LunarLander(gym.Env):
         self.moon.color2 = (0.0,0.0,0.0)
 
         initial_y = VIEWPORT_H/SCALE
-        rand = np.random.randint(-VIEWPORT_W/SCALE/2+1,VIEWPORT_W/SCALE/2-1)
+        # print(VIEWPORT_W/SCALE/2)
+        # VIEWPORT_W / SCALE / 2==10
+        rand = np.random.randint(-VIEWPORT_W/SCALE/2+4,VIEWPORT_W/SCALE/2-4)
+        # print(rand)
         # rand = 0
         self.lander = self.world.CreateDynamicBody(
             position = (VIEWPORT_W/SCALE/2+rand, initial_y),
