@@ -76,18 +76,21 @@ class RL():
 
             self.l1 = tf.layers.dense(self.scalarInput, 50, tf.nn.relu, kernel_initializer=w_initializer, bias_initializer=b_initializer)
 
-
-            self.streamA = slim.flatten(self.l1)  # streamAC)
-            self.streamV = slim.flatten(self.l1)  # streamVC)
             xavier_init = tf.contrib.layers.xavier_initializer()
-            self.AW = tf.Variable(xavier_init([50 , self.n_actions]))
-            self.VW = tf.Variable(xavier_init([50 , 1]))
-            self.Advantage = tf.matmul(self.streamA, self.AW)
-            self.Value = tf.matmul(self.streamV, self.VW)
+            self.Qout = tf.layers.dense(self.l1, self.n_actions, kernel_initializer=xavier_init,
+                                          bias_initializer=b_initializer)
+
+            # self.streamA = slim.flatten(self.l1)  # streamAC)
+            # self.streamV = slim.flatten(self.l1)  # streamVC)
+            # xavier_init = tf.contrib.layers.xavier_initializer()
+            # self.AW = tf.Variable(xavier_init([50 , self.n_actions]))
+            # self.VW = tf.Variable(xavier_init([50 , 1]))
+            # self.Advantage = tf.matmul(self.streamA, self.AW)
+            # self.Value = tf.matmul(self.streamV, self.VW)
 
             # Then combine them together to get our final Q-values.
-            self.Qout = self.Value + tf.subtract(self.Advantage,
-                                                 tf.reduce_mean(self.Advantage, axis=1, keep_dims=True))
+            # self.Qout = self.Value + tf.subtract(self.Advantage,
+            #                                      tf.reduce_mean(self.Advantage, axis=1, keep_dims=True))
             self.predict = tf.argmax(self.Qout, 1)
 
             # Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
@@ -168,66 +171,3 @@ class RL():
 
         def sample(self, size):
             return np.reshape(np.array(random.sample(self.buffer, size)), [size, 5])
-
-
-#
-# env = gym.make('CartPole-v1')
-# env.reset()
-# RL = Double_Dueling_DQN(env)
-#
-#
-# def processState(states):
-#     return np.reshape(states, [reduce(mul, list(env.observation_space.shape), 1)])
-#
-# max_epLength = 1000  # The max allowed length of our episode.
-#
-#
-#
-# # create lists to contain total rewards and steps per episode
-# jList = []
-# rList = []
-# total_steps = 0
-#
-# i = 0
-# while True:
-#     # Reset environment and get first new observation
-#     s = env.reset()
-#     s = processState(s)
-#     d = False
-#     rAll = 0
-#     j = 0
-#     # The Q-Network
-#     while j < max_epLength:  # If the agent takes longer than 1000 moves to reach the end, end the trial.
-#         # env.render()
-#         j += 1
-#         a = RL.choose_action(total_steps)
-#         s1, r, d, info = env.step(a)
-#         s1 = processState(s1)
-#         total_steps += 1
-#
-#         RL.episodeBuffer.add(
-#             np.reshape(np.array([s, a, r, s1, d]), [1, 5]))  # Save the experience to our episode buffer.
-#         RL.learn(total_steps)
-#
-#         rAll += r
-#         s = s1
-#
-#         if d == True:
-#             break
-#     RL.myBuffer.add(RL.episodeBuffer.buffer)
-#
-#     jList.append(j)
-#     rList.append(rAll)
-#     # Periodically save the model.
-#     if i > 0 and i % 1000 == 0:
-#         RL.save_model()
-#         plt.close('all')
-#         # rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
-#         # rMean = np.average(rMat, 1)
-#         plt.plot(np.array(rList))
-#         plt.show(block=False)
-#     if len(rList) % 10 == 0:
-#         print(total_steps, np.mean(rList[-10:]), RL.e)
-#     i += 1
-
-# print("Percent of succesful episodes: " + str(sum(rList) / num_episodes) + "%")

@@ -56,7 +56,7 @@ class RL():
         self.e = self.startE
         self.stepDrop = (self.startE - self.endE) / self.annealing_steps
 
-        load_model = True  # Whether to load a saved model.
+        load_model = False  # Whether to load a saved model.
         if load_model == True:
             print('Loading Model...')
             ckpt = tf.train.get_checkpoint_state(self.path)
@@ -123,11 +123,11 @@ class RL():
             if self.total_steps % (self.update_freq) == 0:
                 trainBatch = self.myBuffer.sample(self.batch_size)  # Get a random batch of experiences.
                 # Below we perform the Double-DQN update to the target Q-values
-                Q1 = self.sess.run(self.mainQN.predict, feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 3])})
+                Q1 = self.sess.run(self.mainQN.Qout, feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 3])})
                 Q2 = self.sess.run(self.targetQN.Qout, feed_dict={self.targetQN.scalarInput: np.vstack(trainBatch[:, 3])})
                 end_multiplier = -(trainBatch[:, 4] - 1)
-                doubleQ = Q2[range(self.batch_size), Q1]
-                targetQ = trainBatch[:, 2] + (self.y * doubleQ * end_multiplier)
+                # doubleQ = Q2[range(self.batch_size), Q1]
+                targetQ = trainBatch[:, 2] + (self.y * np.max(Q1, axis=1) * end_multiplier)#* doubleQ * end_multiplier)
                 # Update the network with our target values.
                 _ = self.sess.run(self.mainQN.updateModel, \
                              feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]), self.mainQN.targetQ: targetQ,
