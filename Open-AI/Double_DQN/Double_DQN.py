@@ -11,13 +11,13 @@ from operator import mul
 
 
 class RL():
-    def __init__(self, env):
+    def __init__(self, env, learning_rate = 0.0001,e=0.1,path='',load_model=False):
         self.batch_size = 512  # How many experiences to use for each training step.
         self.update_freq = 10  # How often to perform a training step.
-        self.learning_rate = 0.0001
+        self.learning_rate = learning_rate
         self.y = .99  # Discount factor on the target Q-values
         self.startE = 1  # Starting chance of random action
-        self.endE = 0.1  # Final chance of random action
+        self.endE = e  # Final chance of random action
         self.annealing_steps = 10000.  # How many steps of training to reduce startE to endE.
         self.num_episodes = 10000  # How many episodes of game environment to train network with.
         self.pre_train_steps = 10000  # How many steps of random actions before training begins.
@@ -35,13 +35,14 @@ class RL():
         self.sess = tf.Session()
         self.sess.run(init)
 
-        self.path = "./dqn"  # The path to save our model to.
+        self.path = path  # The path to save our model to.
 
         # Make a path for our model to be saved in.
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
         self.saver = tf.train.Saver()
+        self.save_count = 0
 
 
         tau = 0.001  # Rate to update target network toward primary network
@@ -56,7 +57,7 @@ class RL():
         self.e = self.startE
         self.stepDrop = (self.startE - self.endE) / self.annealing_steps
 
-        load_model = True  # Whether to load a saved model.
+        # load_model = False  # Whether to load a saved model.
         if load_model == True:
             print('Loading Model...')
             ckpt = tf.train.get_checkpoint_state(self.path)
@@ -153,9 +154,11 @@ class RL():
             self.sess.run(op)
 
     def save_model(self,i):
-        self.saver.save(self.sess, self.path + '/model-' + str(i) + '.ckpt')
+        self.saver.save(self.sess, self.path + '/' + str(self.save_count) + '/model-' + str(i) + '.ckpt')
+        if i % 5000 == 0:
+            self.save_count += 1
+            self.saver = tf.train.Saver()
         print("Saved Model")
-
 
     class experience_buffer():
         def __init__(self, buffer_size=500000):
