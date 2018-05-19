@@ -224,27 +224,27 @@ class Environment:
 
             if done:
                 break
+        if agent.memory.isFull():
+            rList.append(R)
+            lenRList = len(rList)
+            print("Total reward:", R)
+            if lenRList % 100 == 0:
+                print("Drawing plot")
+                plt.close('all')
+                rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
+                rMean = np.average(rMat, 1)
+                plt.plot(rMean)
+                plt.xlabel('Training episodes (hundreds)')
+                plt.ylabel('Average rewards every 100 episodes')
+                plt.savefig(OUTPUT_DIR + "/" + OUTPUT_NAME + ".png")
 
-        rList.append(R)
-        lenRList = len(rList)
-        print("Total reward:", R)
-        if lenRList % 100 == 0:
-            print("Drawing plot")
-            plt.close('all')
-            rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
-            rMean = np.average(rMat, 1)
-            plt.plot(rMean)
-            plt.xlabel('Training episodes (hundreds)')
-            plt.ylabel('Average rewards every 100 episodes')
-            plt.savefig(OUTPUT_DIR + "/" + OUTPUT_NAME + ".png")
-
-            if lenRList % 1000 == 0:
-                self.index += 1
-                print("Saving model")
-                # Save memory model
-                agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + ".h5")
-                # Save reward list
-                np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-rList", rList)
+                if lenRList % 1000 == 0:
+                    self.index += 1
+                    print("Saving model")
+                    # Save memory model
+                    agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + ".h5")
+                    # Save reward list
+                    np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-rList", rList)
 
 
 

@@ -110,9 +110,6 @@ class Memory:   # stored as ( s, a, r, s_ ) in SumTree
         p = self._getPriority(error)
         self.tree.update(idx, p)
 
-    def isFull(self):
-        return len(self.samples) >= self.capacity
-
 
 # -------------------- AGENT ---------------------------
 MEMORY_CAPACITY = 500000
@@ -165,6 +162,38 @@ class Agent:
         # slowly decrease Epsilon based on our eperience
         self.steps += 1
         self.epsilon = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self.steps)
+
+    def _getTargets(self, batch):
+        no_state = numpy.zeros(self.stateCnt)
+
+        states = numpy.array([o[1][0] for o in batch])
+        states_ = numpy.array([(no_state if o[1][3] is None else o[1][3]) for o in batch])
+
+        p = agent.brain.predict(states)
+
+        p_ = agent.brain.predict(states_, target=False)
+        pTarget_ = agent.brain.predict(states_, target=True)
+
+        x = numpy.zeros((len(batch), IMAGE_STACK, IMAGE_WIDTH, IMAGE_HEIGHT))
+        y = numpy.zeros((len(batch), self.actionCnt))
+        errors = numpy.zeros(len(batch))
+
+        for i in range(len(batch)):
+            o = batch[i]
+            s, a, r, s_ = o
+
+            t = p[i]
+            oldVal = t[a]
+            if s_ is None:
+                t[a] = r
+            else:
+                t[a] = r + GAMMA * pTarget_[i][numpy.argmax(p_[i])]  # double DQN
+
+            x[i] = s
+            y[i] = t
+            errors[i] = abs(oldVal - t[a])
+
+        return (x, y, errors)
 
     def replay(self):
         batch = self.memory.sample(BATCH_SIZE)
