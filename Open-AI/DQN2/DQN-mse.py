@@ -13,6 +13,8 @@ import random, numpy, math, gym, sys
 from keras import backend as K
 
 import tensorflow as tf
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 # ----------
