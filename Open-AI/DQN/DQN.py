@@ -14,7 +14,7 @@ class DeepQNetwork:
         self.epsilon_max = 0.9
         self.replace_target_iter = 500
         self.memory_size = 500000
-        self.batch_size = 1000
+        self.batch_size = 512
         self.e_greedy_increment = 0.0001
         self.epsilon = 0 if self.e_greedy_increment is not None else self.epsilon_max
         self.output_graph = False
