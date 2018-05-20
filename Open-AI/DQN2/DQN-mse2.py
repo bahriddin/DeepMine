@@ -57,7 +57,7 @@ class Brain:
         model.add(Dense(units=64, activation='relu'))
         model.add(Dense(units=actionCnt, activation='linear'))
 
-        opt = RMSprop(lr=LEARNING_RATE)
+        opt = Adam(lr=LEARNING_RATE)
         model.compile(loss='mean_squared_error', optimizer=opt)
 
         return model
