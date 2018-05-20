@@ -113,7 +113,7 @@ import os
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 OUTPUT_NAME = 'LunarLander-DQN-mse'
-file = open(OUTPUT_DIR + '/' + OUTPUT_NAME, 'w+')
+file = open(OUTPUT_DIR + '/' + OUTPUT_NAME + '.txt', 'w+')
 
 UPDATE_TARGET_FREQUENCY = 1000
 
