@@ -232,8 +232,8 @@ class Environment:
             rList.append(R)
             stepList.append(steps)
             lenRList = len(rList)
-            print("Total reward: ", R)
-            file.write("Total reward:" + str(R))
+            print("Total reward:", R)
+            file.write("Total reward: " + str(R))
             file.write('\n')
             if lenRList % 100 == 0:
                 print("Drawing plot")
