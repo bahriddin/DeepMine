@@ -138,7 +138,7 @@ class Agent:
         self.actionCnt = actionCnt
 
         self.brain = Brain(stateCnt, actionCnt)
-        self.memory = Memory(MEMORY_CAPACITY)
+        # self.memory = Memory(MEMORY_CAPACITY)
 
     def act(self, s):
         if random.random() < self.epsilon:
@@ -227,6 +227,7 @@ class Agent:
 
 class RandomAgent:
     memory = Memory(MEMORY_CAPACITY)
+    exp = 0
 
     def __init__(self, actionCnt):
         self.actionCnt = actionCnt
@@ -235,7 +236,9 @@ class RandomAgent:
         return random.randint(0, self.actionCnt - 1)
 
     def observe(self, sample):  # in (s, a, r, s_) format
-        self.memory.add(sample)
+        error = abs(sample[2])  # reward
+        self.memory.add(error, sample)
+        self.exp += 1
 
     def replay(self):
         pass
@@ -308,12 +311,16 @@ randomAgent = RandomAgent(actionCnt)
 rList = []
 
 try:
-    while randomAgent.memory.isFull() == False:
+    print("Initialization with random agent...")
+    while randomAgent.exp < MEMORY_CAPACITY:
         env.run(randomAgent)
+        print(randomAgent.exp, "/", MEMORY_CAPACITY)
 
-    agent.memory.samples = randomAgent.memory.samples
+    agent.memory = randomAgent.memory
+
     randomAgent = None
 
+    print("Starting learning")
     while True:
         env.run(agent)
 finally:
