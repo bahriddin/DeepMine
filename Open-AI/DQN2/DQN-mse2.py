@@ -13,8 +13,9 @@ import random, numpy, math, gym, sys
 from keras import backend as K
 
 import tensorflow as tf
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
-from SumTree import SumTree
 
 # ----------
 HUBER_LOSS_DELTA = 1.0
@@ -77,38 +78,25 @@ class Brain:
         self.model_.set_weights(self.model.get_weights())
 
 
-#-------------------- MEMORY --------------------------
-class Memory:   # stored as ( s, a, r, s_ ) in SumTree
-    e = 0.01
-    a = 0.6
+# -------------------- MEMORY --------------------------
+class Memory:  # stored as ( s, a, r, s_ )
+    samples = []
 
     def __init__(self, capacity):
-        self.tree = SumTree(capacity)
+        self.capacity = capacity
 
-    def _getPriority(self, error):
-        return (error + self.e) ** self.a
+    def add(self, sample):
+        self.samples.append(sample)
 
-    def add(self, error, sample):
-        p = self._getPriority(error)
-        self.tree.add(p, sample)
+        if len(self.samples) > self.capacity:
+            self.samples.pop(0)
 
     def sample(self, n):
-        batch = []
-        segment = self.tree.total() / n
+        n = min(n, len(self.samples))
+        return random.sample(self.samples, n)
 
-        for i in range(n):
-            a = segment * i
-            b = segment * (i + 1)
-
-            s = random.uniform(a, b)
-            (idx, p, data) = self.tree.get(s)
-            batch.append( (idx, data) )
-
-        return batch
-
-    def update(self, idx, error):
-        p = self._getPriority(error)
-        self.tree.update(idx, p)
+    def isFull(self):
+        return len(self.samples) >= self.capacity
 
 
 # -------------------- AGENT ---------------------------
@@ -120,11 +108,12 @@ GAMMA = 0.999
 MAX_EPSILON = 1
 MIN_EPSILON = 0.01
 LAMBDA = 0.001  # speed of decay
-OUTPUT_DIR = './dqn-per-mse'
+OUTPUT_DIR = './dqn-mse2'
 import os
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
-OUTPUT_NAME = 'LunarLander-DQN-PER-mse'
+OUTPUT_NAME = 'LunarLander-DQN-mse'
+file = open(OUTPUT_DIR + '/' + OUTPUT_NAME, 'w+')
 
 UPDATE_TARGET_FREQUENCY = 1000
 
@@ -162,38 +151,6 @@ class Agent:
         # slowly decrease Epsilon based on our eperience
         self.steps += 1
         self.epsilon = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self.steps)
-
-    def _getTargets(self, batch):
-        no_state = numpy.zeros(self.stateCnt)
-
-        states = numpy.array([o[0] for o in batch])
-        states_ = numpy.array([(no_state if o[3] is None else o[3]) for o in batch])
-
-        p = agent.brain.predict(states)
-
-        p_ = agent.brain.predict(states_, target=False)
-        pTarget_ = agent.brain.predict(states_, target=True)
-
-        x = numpy.zeros((len(batch), IMAGE_STACK, IMAGE_WIDTH, IMAGE_HEIGHT))
-        y = numpy.zeros((len(batch), self.actionCnt))
-        errors = numpy.zeros(len(batch))
-
-        for i in range(len(batch)):
-            o = batch[i]
-            s, a, r, s_ = o
-
-            t = p[i]
-            oldVal = t[a]
-            if s_ is None:
-                t[a] = r
-            else:
-                t[a] = r + GAMMA * pTarget_[i][numpy.argmax(p_[i])]  # double DQN
-
-            x[i] = s
-            y[i] = t
-            errors[i] = abs(oldVal - t[a])
-
-        return (x, y, errors)
 
     def replay(self):
         batch = self.memory.sample(BATCH_SIZE)
@@ -251,9 +208,10 @@ class Environment:
     def run(self, agent, index=0):
         s = self.env.reset()
         R = 0
-
+        steps = 0
         while True:
             # self.env.render()
+            steps += 1
 
             a = agent.act(s)
 
@@ -270,29 +228,30 @@ class Environment:
 
             if done:
                 break
+        if agent.memory.isFull():
+            rList.append(R)
+            stepList.append(steps)
+            lenRList = len(rList)
+            file.write("Total reward:", R)
+            file.write('\n\r')
+            if lenRList % 100 == 0:
+                print("Drawing plot")
+                plt.close('all')
+                rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
+                rMean = np.average(rMat, 1)
+                plt.plot(rMean)
+                plt.xlabel('Training episodes (hundreds)')
+                plt.ylabel('Average rewards every 100 episodes')
+                plt.savefig(OUTPUT_DIR + "/" + OUTPUT_NAME + ".png")
 
-        rList.append(R)
-        lenRList = len(rList)
-        print("Total reward:", R)
-        if lenRList % 100 == 0:
-            print("Drawing plot")
-            plt.close('all')
-            rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
-            rMean = np.average(rMat, 1)
-            plt.plot(rMean)
-            plt.xlabel('Training episodes (hundreds)')
-            plt.ylabel('Average rewards every 100 episodes')
-            plt.savefig(OUTPUT_DIR + "/" + OUTPUT_NAME + ".png")
-
-            if lenRList % 1000 == 0:
-                self.index += 1
-                print("Saving model")
-                # Save memory model
-                agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + ".h5")
-                # Save reward list
-                np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-rList", rList)
-
-
+                if lenRList % 1000 == 0:
+                    self.index += 1
+                    print("Saving model")
+                    # Save memory model
+                    agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + ".h5")
+                    # Save reward list
+                    np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-rList", rList)
+                    np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-stepList", stepList)
 
 
 # -------------------- MAIN ----------------------------
@@ -306,6 +265,7 @@ agent = Agent(stateCnt, actionCnt)
 randomAgent = RandomAgent(actionCnt)
 
 rList = []
+stepList = []
 
 try:
     while randomAgent.memory.isFull() == False:
@@ -318,3 +278,4 @@ try:
         env.run(agent)
 finally:
     agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + "-final.h5")
+    file.close()
