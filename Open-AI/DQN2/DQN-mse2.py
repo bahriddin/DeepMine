@@ -232,7 +232,7 @@ class Environment:
             rList.append(R)
             stepList.append(steps)
             lenRList = len(rList)
-            print("Total reward:", R)
+            print("Total reward: " + str(R))
             file.write("Total reward:", R)
             file.write('\n\r')
             if lenRList % 100 == 0:

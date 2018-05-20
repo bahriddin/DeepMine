@@ -174,7 +174,7 @@ class Agent:
         p_ = agent.brain.predict(states_, target=False)
         pTarget_ = agent.brain.predict(states_, target=True)
 
-        x = numpy.zeros((len(batch), IMAGE_STACK, IMAGE_WIDTH, IMAGE_HEIGHT))
+        x = numpy.zeros((len(batch), self.stateCnt))
         y = numpy.zeros((len(batch), self.actionCnt))
         errors = numpy.zeros(len(batch))
 
@@ -197,32 +197,42 @@ class Agent:
 
     def replay(self):
         batch = self.memory.sample(BATCH_SIZE)
-        batchLen = len(batch)
+        x, y, errors = self._getTargets(batch)
 
-        no_state = numpy.zeros(self.stateCnt)
-
-        states = numpy.array([o[0] for o in batch])
-        states_ = numpy.array([(no_state if o[3] is None else o[3]) for o in batch])
-
-        p = self.brain.predict(states)
-        p_ = self.brain.predict(states_, target=True)
-
-        x = numpy.zeros((batchLen, self.stateCnt))
-        y = numpy.zeros((batchLen, self.actionCnt))
-
-        for i in range(batchLen):
-            o = batch[i]
-            s, a, r, s_ = o
-
-            t = p[i]
-            if s_ is None:
-                t[a] = r
-            else:
-                t[a] = r + GAMMA * numpy.amax(p_[i])
-
-            x[i], y[i] = s, t
+        # update errors
+        for i in range(len(batch)):
+            idx = batch[i][0]
+            self.memory.update(idx, errors[i])
 
         self.brain.train(x, y)
+
+        # batch = self.memory.sample(BATCH_SIZE)
+        # batchLen = len(batch)
+        #
+        # no_state = numpy.zeros(self.stateCnt)
+        #
+        # states = numpy.array([o[0] for o in batch])
+        # states_ = numpy.array([(no_state if o[3] is None else o[3]) for o in batch])
+        #
+        # p = self.brain.predict(states)
+        # p_ = self.brain.predict(states_, target=True)
+        #
+        # x = numpy.zeros((batchLen, self.stateCnt))
+        # y = numpy.zeros((batchLen, self.actionCnt))
+        #
+        # for i in range(batchLen):
+        #     o = batch[i]
+        #     s, a, r, s_ = o
+        #
+        #     t = p[i]
+        #     if s_ is None:
+        #         t[a] = r
+        #     else:
+        #         t[a] = r + GAMMA * numpy.amax(p_[i])
+        #
+        #     x[i], y[i] = s, t
+        #
+        # self.brain.train(x, y)
 
 
 class RandomAgent:
