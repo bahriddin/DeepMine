@@ -245,14 +245,14 @@ class Environment:
                 plt.ylabel('Average rewards every 100 episodes')
                 plt.savefig(OUTPUT_DIR + "/" + OUTPUT_NAME + ".png")
 
-                if lenRList % 1000 == 0:
-                    self.index += 1
-                    print("Saving model")
-                    # Save memory model
-                    agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + ".h5")
-                    # Save reward list
-                    np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-rList", rList)
-                    np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-stepList", stepList)
+                # if lenRList % 1000 == 0:
+                self.index += 1
+                print("Saving model")
+                # Save memory model
+                agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + ".h5")
+                # Save reward list
+                np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-rList", rList)
+                np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-stepList", stepList)
 
 
 # -------------------- MAIN ----------------------------
