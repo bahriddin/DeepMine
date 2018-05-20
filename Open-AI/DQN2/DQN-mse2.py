@@ -53,8 +53,8 @@ class Brain:
     def _createModel(self):
         model = Sequential()
 
-        model.add(Dense(units=512, activation='relu', input_dim=stateCnt))
-        # model.add(Dense(units=64, activation='relu'))
+        model.add(Dense(units=128, activation='relu', input_dim=stateCnt))
+        model.add(Dense(units=64, activation='relu'))
         model.add(Dense(units=actionCnt, activation='linear'))
 
         opt = RMSprop(lr=LEARNING_RATE)
@@ -101,7 +101,7 @@ class Memory:  # stored as ( s, a, r, s_ )
 
 # -------------------- AGENT ---------------------------
 MEMORY_CAPACITY = 500000
-BATCH_SIZE = 512
+BATCH_SIZE = 32
 
 GAMMA = 0.999
 
@@ -232,9 +232,9 @@ class Environment:
             rList.append(R)
             stepList.append(steps)
             lenRList = len(rList)
-            print("Total reward: " + str(R))
-            file.write("Total reward:", R)
-            file.write('\n\r')
+            print("Total reward: ", R)
+            file.write("Total reward:" + str(R))
+            file.write('\n')
             if lenRList % 100 == 0:
                 print("Drawing plot")
                 plt.close('all')
