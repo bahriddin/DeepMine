@@ -205,7 +205,7 @@ class Environment:
         self.env = gym.make(problem)
         self.index = 0
 
-    def run(self, agent, index=0):
+    def run(self, agent):
         s = self.env.reset()
         R = 0
         steps = 0
