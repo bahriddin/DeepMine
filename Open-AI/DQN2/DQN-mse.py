@@ -18,22 +18,22 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 # ----------
-HUBER_LOSS_DELTA = 1.0
+# HUBER_LOSS_DELTA = 1.0
 LEARNING_RATE = 0.0001
 
 
 # ----------
 
-def huber_loss(y_true, y_pred):
-    err = y_true - y_pred
-    print(K.abs(err))
-    cond = K.abs(err) < HUBER_LOSS_DELTA
-    L2 = 0.5 * K.square(err)
-    L1 = HUBER_LOSS_DELTA * (K.abs(err) - 0.5 * HUBER_LOSS_DELTA)
-
-    loss = tf.where(cond, L2, L1)  # Keras does not cover where function in tensorflow :-(
-
-    return K.mean(loss)
+# def huber_loss(y_true, y_pred):
+#     err = y_true - y_pred
+#     print(K.abs(err))
+#     cond = K.abs(err) < HUBER_LOSS_DELTA
+#     L2 = 0.5 * K.square(err)
+#     L1 = HUBER_LOSS_DELTA * (K.abs(err) - 0.5 * HUBER_LOSS_DELTA)
+#
+#     loss = tf.where(cond, L2, L1)  # Keras does not cover where function in tensorflow :-(
+#
+#     return K.mean(loss)
 
 
 # -------------------- BRAIN ---------------------------
@@ -53,11 +53,11 @@ class Brain:
     def _createModel(self):
         model = Sequential()
 
-        model.add(Dense(units=512, activation='relu', input_dim=stateCnt))
-        # model.add(Dense(units=64, activation='relu'))
+        model.add(Dense(units=128, activation='relu', input_dim=stateCnt))
+        model.add(Dense(units=64, activation='relu'))
         model.add(Dense(units=actionCnt, activation='linear'))
 
-        opt = RMSprop(lr=LEARNING_RATE)
+        opt = Adam(lr=LEARNING_RATE)
         model.compile(loss='mean_squared_error', optimizer=opt)
 
         return model
@@ -100,19 +100,20 @@ class Memory:  # stored as ( s, a, r, s_ )
 
 
 # -------------------- AGENT ---------------------------
-MEMORY_CAPACITY = 500000
-BATCH_SIZE = 512
+MEMORY_CAPACITY = 2 ** 16
+BATCH_SIZE = 32
 
 GAMMA = 0.999
 
-MAX_EPSILON = 1
+MAX_EPSILON = 1.0
 MIN_EPSILON = 0.01
-LAMBDA = 0.001  # speed of decay
+LAMBDA = 0.00001  # speed of decay
 OUTPUT_DIR = './dqn-mse'
 import os
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 OUTPUT_NAME = 'LunarLander-DQN-mse'
+file = open(OUTPUT_DIR + '/' + OUTPUT_NAME + '.txt', 'w+')
 
 UPDATE_TARGET_FREQUENCY = 1000
 
@@ -147,7 +148,7 @@ class Agent:
         #     print(pred[0])
         #     sys.stdout.flush()
 
-        # slowly decrease Epsilon based on our eperience
+        # slowly decrease Epsilon based on our experience
         self.steps += 1
         self.epsilon = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self.steps)
 
@@ -207,9 +208,10 @@ class Environment:
     def run(self, agent, index=0):
         s = self.env.reset()
         R = 0
-
+        steps = 0
         while True:
             # self.env.render()
+            steps += 1
 
             a = agent.act(s)
 
@@ -226,10 +228,13 @@ class Environment:
 
             if done:
                 break
-        if agent.memory.isFull():
+        if isinstance(agent, Agent):
             rList.append(R)
+            stepList.append(steps)
             lenRList = len(rList)
-            print("Total reward:", R)
+            print('Episode ' + str(lenRList) + " reward " + str(R) + ' in ' + str(steps) + ' steps, epsilon=' + str(agent.epsilon))
+            file.write('Episode ' + str(lenRList) + " reward " + str(R) + ' in ' + str(steps) + ' steps, epsilon=' + str(agent.epsilon))
+            file.write('\n')
             if lenRList % 100 == 0:
                 print("Drawing plot")
                 plt.close('all')
@@ -240,15 +245,14 @@ class Environment:
                 plt.ylabel('Average rewards every 100 episodes')
                 plt.savefig(OUTPUT_DIR + "/" + OUTPUT_NAME + ".png")
 
-                if lenRList % 1000 == 0:
-                    self.index += 1
-                    print("Saving model")
-                    # Save memory model
-                    agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + ".h5")
-                    # Save reward list
-                    np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-rList", rList)
-
-
+                # if lenRList % 1000 == 0:
+                self.index += 1
+                print("Saving model")
+                # Save memory model
+                agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + ".h5")
+                # Save reward list
+                np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-rList", rList)
+                np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-stepList", stepList)
 
 
 # -------------------- MAIN ----------------------------
@@ -262,6 +266,7 @@ agent = Agent(stateCnt, actionCnt)
 randomAgent = RandomAgent(actionCnt)
 
 rList = []
+stepList = []
 
 try:
     while randomAgent.memory.isFull() == False:
@@ -274,3 +279,4 @@ try:
         env.run(agent)
 finally:
     agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + "-final.h5")
+    file.close()

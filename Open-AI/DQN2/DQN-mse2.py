@@ -18,22 +18,22 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 
 # ----------
-HUBER_LOSS_DELTA = 1.0
+# HUBER_LOSS_DELTA = 1.0
 LEARNING_RATE = 0.0001
 
 
 # ----------
 
-def huber_loss(y_true, y_pred):
-    err = y_true - y_pred
-    print(K.abs(err))
-    cond = K.abs(err) < HUBER_LOSS_DELTA
-    L2 = 0.5 * K.square(err)
-    L1 = HUBER_LOSS_DELTA * (K.abs(err) - 0.5 * HUBER_LOSS_DELTA)
-
-    loss = tf.where(cond, L2, L1)  # Keras does not cover where function in tensorflow :-(
-
-    return K.mean(loss)
+# def huber_loss(y_true, y_pred):
+#     err = y_true - y_pred
+#     print(K.abs(err))
+#     cond = K.abs(err) < HUBER_LOSS_DELTA
+#     L2 = 0.5 * K.square(err)
+#     L1 = HUBER_LOSS_DELTA * (K.abs(err) - 0.5 * HUBER_LOSS_DELTA)
+#
+#     loss = tf.where(cond, L2, L1)  # Keras does not cover where function in tensorflow :-(
+#
+#     return K.mean(loss)
 
 
 # -------------------- BRAIN ---------------------------
@@ -101,13 +101,13 @@ class Memory:  # stored as ( s, a, r, s_ )
 
 # -------------------- AGENT ---------------------------
 MEMORY_CAPACITY = 500000
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 
 GAMMA = 0.999
 
-MAX_EPSILON = 1
-MIN_EPSILON = 0.01
-LAMBDA = 0.001  # speed of decay
+MAX_EPSILON = 1.0
+MIN_EPSILON = 0.02
+LAMBDA = 0.000004  # speed of decay
 OUTPUT_DIR = './dqn-mse2'
 import os
 if not os.path.exists(OUTPUT_DIR):
@@ -148,7 +148,7 @@ class Agent:
         #     print(pred[0])
         #     sys.stdout.flush()
 
-        # slowly decrease Epsilon based on our eperience
+        # slowly decrease Epsilon based on our experience
         self.steps += 1
         self.epsilon = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self.steps)
 
@@ -228,12 +228,12 @@ class Environment:
 
             if done:
                 break
-        if agent.memory.isFull():
+        if isinstance(agent, Agent):
             rList.append(R)
             stepList.append(steps)
             lenRList = len(rList)
-            print("Total reward:", R)
-            file.write("Total reward: " + str(R))
+            print('Episode ' + str(lenRList) + " reward " + str(R) + ' in ' + str(steps) + ' steps, epsilon=' + str(agent.epsilon))
+            file.write('Episode ' + str(lenRList) + " reward " + str(R) + ' in ' + str(steps) + ' steps, epsilon=' + str(agent.epsilon))
             file.write('\n')
             if lenRList % 100 == 0:
                 print("Drawing plot")
