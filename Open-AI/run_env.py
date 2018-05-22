@@ -27,17 +27,20 @@ def main(argv):
             elif arg == '3':
                 from Double_Dueling_DQN.Double_Dueling_DQN import RL
                 path = 'Double_Dueling_DQN'
+            elif arg == '4':
+                from DQN.DQN import RL
+                path = 'DQN'
         elif opt in ("-l","--learning_rate" ):
             learning_rate = float(arg)
         elif opt in ("-e","--e"):
             e = float(arg)
     path += "/"+str(learning_rate)
-    reward_path = path+'/rlist'
+    reward_path = path+'/dqn_rlist'
 
 
     env = gym.make('LunarLander-v2')
     env.reset()
-    RL = RL(env,learning_rate,e,path=path)
+    RL = RL(env,learning_rate,e,path=path,load_model = False)
     show = False  # Whether to show the game or not
 
     def processState(states):
@@ -84,6 +87,7 @@ def main(argv):
             RL.save_model(i)
 
         if i > 0 and i % 100 == 0:
+
             plt.close('all')
             rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
             rMean = np.average(rMat, 1)
