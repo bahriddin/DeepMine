@@ -161,9 +161,9 @@ class LunarLander(gym.Env):
         initial_y = VIEWPORT_H/SCALE
         # print(VIEWPORT_W/SCALE/2)
         # VIEWPORT_W / SCALE / 2==10
-        rand = np.random.randint(-VIEWPORT_W/SCALE/2+3,VIEWPORT_W/SCALE/2-3)
+        # rand = np.random.randint(-VIEWPORT_W/SCALE/2+3,VIEWPORT_W/SCALE/2-3)
         # print(rand)
-        # rand = 0
+        rand = 0
         self.lander = self.world.CreateDynamicBody(
             position = (VIEWPORT_W/SCALE/2+rand, initial_y),
             angle=0.0,
