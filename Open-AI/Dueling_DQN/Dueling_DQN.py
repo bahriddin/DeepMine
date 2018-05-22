@@ -124,7 +124,7 @@ class RL():
                 trainBatch = self.myBuffer.sample(self.batch_size)  # Get a random batch of experiences.
                 # Below we perform the Double-DQN update to the target Q-values
                 Q1 = self.sess.run(self.mainQN.Qout, feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 3])})
-                Q2 = self.sess.run(self.targetQN.Qout, feed_dict={self.targetQN.scalarInput: np.vstack(trainBatch[:, 3])})
+                # Q2 = self.sess.run(self.targetQN.Qout, feed_dict={self.targetQN.scalarInput: np.vstack(trainBatch[:, 3])})
                 end_multiplier = -(trainBatch[:, 4] - 1)
                 # doubleQ = Q2[range(self.batch_size), Q1]
                 targetQ = trainBatch[:, 2] + (self.y * np.max(Q1, axis=1) * end_multiplier)#* doubleQ * end_multiplier)
