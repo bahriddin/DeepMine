@@ -114,7 +114,7 @@ if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
 OUTPUT_NAME = 'LunarLander-DQN-mse'
 file = open(OUTPUT_DIR + '/' + OUTPUT_NAME + '.txt', 'w+')
-
+TRAINING_EPISODES = 50000
 UPDATE_TARGET_FREQUENCY = 1000
 
 
@@ -275,7 +275,7 @@ try:
     agent.memory.samples = randomAgent.memory.samples
     randomAgent = None
 
-    while True:
+    for _ in range(TRAINING_EPISODES):
         env.run(agent)
 finally:
     agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + "-final.h5")
