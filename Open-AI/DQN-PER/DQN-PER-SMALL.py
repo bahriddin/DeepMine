@@ -114,8 +114,8 @@ class Memory:   # stored as ( s, a, r, s_ ) in SumTree
 
 
 # -------------------- AGENT ---------------------------
-MEMORY_CAPACITY = 500000
-BATCH_SIZE = 512
+MEMORY_CAPACITY = 2 ** 16
+BATCH_SIZE = 64
 
 GAMMA = 0.999
 
