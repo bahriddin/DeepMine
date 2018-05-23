@@ -13,8 +13,9 @@ import random, numpy, math, gym, sys
 from keras import backend as K
 
 import tensorflow as tf
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
-from SumTree import SumTree
 
 # ----------
 # HUBER_LOSS_DELTA = 1.0
@@ -52,7 +53,7 @@ class Brain:
     def _createModel(self):
         model = Sequential()
 
-        model.add(Dense(units=50, activation='relu', input_dim=stateCnt))
+        model.add(Dense(units=64, activation='relu', input_dim=stateCnt))
         # model.add(Dense(units=64, activation='relu'))
         model.add(Dense(units=actionCnt, activation='linear'))
 
@@ -77,38 +78,25 @@ class Brain:
         self.model_.set_weights(self.model.get_weights())
 
 
-#-------------------- MEMORY --------------------------
-class Memory:   # stored as ( s, a, r, s_ ) in SumTree
-    e = 0.01
-    a = 0.6
+# -------------------- MEMORY --------------------------
+class Memory:  # stored as ( s, a, r, s_ )
+    samples = []
 
     def __init__(self, capacity):
-        self.tree = SumTree(capacity)
+        self.capacity = capacity
 
-    def _getPriority(self, error):
-        return (error + self.e) ** self.a
+    def add(self, sample):
+        self.samples.append(sample)
 
-    def add(self, error, sample):
-        p = self._getPriority(error)
-        self.tree.add(p, sample)
+        if len(self.samples) > self.capacity:
+            self.samples.pop(0)
 
     def sample(self, n):
-        batch = []
-        segment = self.tree.total() / n
+        n = min(n, len(self.samples))
+        return random.sample(self.samples, n)
 
-        for i in range(n):
-            a = segment * i
-            b = segment * (i + 1)
-
-            s = random.uniform(a, b)
-            (idx, p, data) = self.tree.get(s)
-            batch.append( (idx, data) )
-
-        return batch
-
-    def update(self, idx, error):
-        p = self._getPriority(error)
-        self.tree.update(idx, p)
+    def isFull(self):
+        return len(self.samples) >= self.capacity
 
 
 # -------------------- AGENT ---------------------------
@@ -117,14 +105,14 @@ BATCH_SIZE = 512
 
 GAMMA = 0.999
 
-MAX_EPSILON = 1
+MAX_EPSILON = 1.0
 MIN_EPSILON = 0.1
 LAMBDA = 0.00001  # speed of decay
-OUTPUT_DIR = './dqn-per'
+OUTPUT_DIR = './dqn-mse-simple'
 import os
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
-OUTPUT_NAME = 'LunarLander-DQN-PER'
+OUTPUT_NAME = 'LunarLander-DQN-mse'
 file = open(OUTPUT_DIR + '/' + OUTPUT_NAME + '.txt', 'w+')
 
 UPDATE_TARGET_FREQUENCY = 1000
@@ -139,7 +127,7 @@ class Agent:
         self.actionCnt = actionCnt
 
         self.brain = Brain(stateCnt, actionCnt)
-        # self.memory = Memory(MEMORY_CAPACITY)
+        self.memory = Memory(MEMORY_CAPACITY)
 
     def act(self, s):
         if random.random() < self.epsilon:
@@ -148,93 +136,54 @@ class Agent:
             return numpy.argmax(self.brain.predictOne(s))
 
     def observe(self, sample):  # in (s, a, r, s_) format
-        _, _, errors = self._getTargets([(0, sample)])
-        self.memory.add(errors[0], sample)
+        self.memory.add(sample)
 
         if self.steps % UPDATE_TARGET_FREQUENCY == 0:
             self.brain.updateTargetModel()
 
-        # slowly decrease Epsilon based on our eperience
+        # debug the Q function in poin S
+        # if self.steps % 100 == 0:
+        #     S = numpy.array([-0.01335408, -0.04600273, -0.00677248, 0.01517507])
+        #     pred = agent.brain.predictOne(S)
+        #     print(pred[0])
+        #     sys.stdout.flush()
+
+        # slowly decrease Epsilon based on our experience
         self.steps += 1
-
-        if abs(self.epsilon - MIN_EPSILON) < 0.0001:
-            self.epsilon = MIN_EPSILON
-        else:
-            self.epsilon = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self.steps)
-
-    def _getTargets(self, batch):
-        no_state = numpy.zeros(self.stateCnt)
-        states = numpy.array([o[1][0] for o in batch])
-        states_ = numpy.array([(no_state if o[1][3] is None else o[1][3]) for o in batch])
-
-        policies = agent.brain.predict(states)
-        pTarget_ = agent.brain.predict(states_, target=True)
-
-        x = numpy.zeros((len(batch), self.stateCnt))
-        y = numpy.zeros((len(batch), self.actionCnt))
-        errors = numpy.zeros(len(batch))
-
-        for i in range(len(batch)):
-            o = batch[i][1]
-            s, a, r, s_ = o
-
-            t = policies[i]
-
-            oldVal = t[a]
-            if s_ is None:
-                t[a] = r
-            else:
-                t[a] = r + GAMMA * numpy.amax(pTarget_[i])
-
-            x[i] = s
-            y[i] = t
-            errors[i] = abs(oldVal - t[a])
-
-        return (x, y, errors)
+        self.epsilon = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self.steps)
 
     def replay(self):
         batch = self.memory.sample(BATCH_SIZE)
-        x, y, errors = self._getTargets(batch)
+        batchLen = len(batch)
 
-        # update errors
-        for i in range(len(batch)):
-            idx = batch[i][0]
-            self.memory.update(idx, errors[i])
+        no_state = numpy.zeros(self.stateCnt)
+
+        states = numpy.array([o[0] for o in batch])
+        states_ = numpy.array([(no_state if o[3] is None else o[3]) for o in batch])
+
+        p = self.brain.predict(states)
+        p_ = self.brain.predict(states_, target=True)
+
+        x = numpy.zeros((batchLen, self.stateCnt))
+        y = numpy.zeros((batchLen, self.actionCnt))
+
+        for i in range(batchLen):
+            o = batch[i]
+            s, a, r, s_ = o
+
+            t = p[i]
+            if s_ is None:
+                t[a] = r
+            else:
+                t[a] = r + GAMMA * numpy.amax(p_[i])
+
+            x[i], y[i] = s, t
 
         self.brain.train(x, y)
-
-        # batch = self.memory.sample(BATCH_SIZE)
-        # batchLen = len(batch)
-        #
-        # no_state = numpy.zeros(self.stateCnt)
-        #
-        # states = numpy.array([o[0] for o in batch])
-        # states_ = numpy.array([(no_state if o[3] is None else o[3]) for o in batch])
-        #
-        # p = self.brain.predict(states)
-        # p_ = self.brain.predict(states_, target=True)
-        #
-        # x = numpy.zeros((batchLen, self.stateCnt))
-        # y = numpy.zeros((batchLen, self.actionCnt))
-        #
-        # for i in range(batchLen):
-        #     o = batch[i]
-        #     s, a, r, s_ = o
-        #
-        #     t = p[i]
-        #     if s_ is None:
-        #         t[a] = r
-        #     else:
-        #         t[a] = r + GAMMA * numpy.amax(p_[i])
-        #
-        #     x[i], y[i] = s, t
-        #
-        # self.brain.train(x, y)
 
 
 class RandomAgent:
     memory = Memory(MEMORY_CAPACITY)
-    exp = 0
 
     def __init__(self, actionCnt):
         self.actionCnt = actionCnt
@@ -243,9 +192,7 @@ class RandomAgent:
         return random.randint(0, self.actionCnt - 1)
 
     def observe(self, sample):  # in (s, a, r, s_) format
-        error = abs(sample[2])  # reward
-        self.memory.add(error, sample)
-        self.exp += 1
+        self.memory.add(sample)
 
     def replay(self):
         pass
@@ -258,13 +205,14 @@ class Environment:
         self.env = gym.make(problem)
         self.index = 0
 
-    def run(self, agent, index=0):
+    def run(self, agent):
         s = self.env.reset()
         R = 0
         steps = 0
         while True:
             # self.env.render()
             steps += 1
+
             a = agent.act(s)
 
             s_, r, done, info = self.env.step(a)
@@ -280,7 +228,6 @@ class Environment:
 
             if done:
                 break
-
         if isinstance(agent, Agent):
             rList.append(R)
             stepList.append(steps)
@@ -308,8 +255,6 @@ class Environment:
                 np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-stepList", stepList)
 
 
-
-
 # -------------------- MAIN ----------------------------
 PROBLEM = 'LunarLander-v2'
 env = Environment(PROBLEM)
@@ -324,17 +269,14 @@ rList = []
 stepList = []
 
 try:
-    print("Initialization with random agent...")
-    while randomAgent.exp < MEMORY_CAPACITY:
+    while randomAgent.memory.isFull() == False:
         env.run(randomAgent)
-        # print(randomAgent.exp, "/", MEMORY_CAPACITY)
 
-    agent.memory = randomAgent.memory
-
+    agent.memory.samples = randomAgent.memory.samples
     randomAgent = None
 
-    print("Starting learning")
     while True:
         env.run(agent)
 finally:
     agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + "-final.h5")
+    file.close()
