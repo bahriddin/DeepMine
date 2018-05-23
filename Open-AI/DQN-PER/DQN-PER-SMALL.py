@@ -122,7 +122,7 @@ GAMMA = 0.999
 MAX_EPSILON = 1
 MIN_EPSILON = 0.1
 LAMBDA = 0.00001  # speed of decay
-OUTPUT_DIR = './dqn-per'
+OUTPUT_DIR = './dqn-per-small'
 import os
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
