@@ -337,7 +337,7 @@ try:
     randomAgent = None
 
     print("Starting learning")
-    while agent.steps < TRAINING_EPISODES:
+    for _ in range(TRAINING_EPISODES):
         env.run(agent)
 finally:
     file.close()
