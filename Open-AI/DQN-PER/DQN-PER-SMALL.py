@@ -30,6 +30,7 @@ tuning = [
         'lambda': 0.0001,
         'utf': 1000,
         'uf': 10,
+        'hlu': 50,
         'output_dir': './dqn-per-small-local1',
         'output_name': 'LunarLander-DQN-PER'
     },
@@ -43,6 +44,7 @@ tuning = [
         'lambda': 0.00001,
         'utf': 1000,
         'uf': 10,
+        'hlu': 50,
         'output_dir': './dqn-per-small-local2',
         'output_name': 'LunarLander-DQN-PER'
     },
@@ -56,6 +58,7 @@ tuning = [
         'lambda': 0.00001,
         'utf': 1000,
         'uf': 10,
+        'hlu': 50,
         'output_dir': './dqn-per-small-local3',
         'output_name': 'LunarLander-DQN-PER'
     },
@@ -69,7 +72,65 @@ tuning = [
         'lambda': 0.0001,
         'utf': 1000,
         'uf': 10,
+        'hlu': 50,
         'output_dir': './dqn-per-small-local4',
+        'output_name': 'LunarLander-DQN-PER'
+    },
+    # server running
+    {
+        'lr': 0.0001,
+        'memory': 500000,
+        'batch': 64,
+        'gamma': 0.99,
+        'max_eps': 1,
+        'min_eps': 0.1,
+        'lambda': 0.0001,
+        'utf': 1000,
+        'uf': 10,
+        'hlu': 64,
+        'output_dir': './dqn-per-small-local5',
+        'output_name': 'LunarLander-DQN-PER'
+    },
+    {
+        'lr': 0.0001,
+        'memory': 500000,
+        'batch': 256,
+        'gamma': 0.99,
+        'max_eps': 1,
+        'min_eps': 0.1,
+        'lambda': 0.00001,
+        'utf': 1000,
+        'uf': 10,
+        'hlu': 64,
+        'output_dir': './dqn-per-small-local6',
+        'output_name': 'LunarLander-DQN-PER'
+    },
+    {
+        'lr': 0.0001,
+        'memory': 500000,
+        'batch': 512,
+        'gamma': 0.999,
+        'max_eps': 1,
+        'min_eps': 0.1,
+        'lambda': 0.00001,
+        'utf': 1000,
+        'uf': 10,
+        'hlu': 64,
+        'output_dir': './dqn-per-small-local7',
+        'output_name': 'LunarLander-DQN-PER'
+    },
+    {
+        'lr': 0.0001,
+        'memory': 500000,
+        'batch': 512,
+        'gamma': 0.99,
+        'max_eps': 1,
+        'min_eps': 0.1,
+        'lambda': 0.0001,
+        'utf': 1000,
+        'uf': 10,
+        'hlu': 64,
+        'output_dir': './dqn-per-small-local8',
         'output_name': 'LunarLander-DQN-PER'
     },
 
@@ -93,6 +154,7 @@ LAMBDA = tuning[tune_id]['lambda']  # speed of decay
 UPDATE_TARGET_FREQUENCY = tuning[tune_id]['utf']
 UPDATE_FREQUENCY = tuning[tune_id]['uf']   # how often to replay batch and train
 TRAINING_EPISODES = 50000
+HIDDEN_LAYER_UNITS   = tuning[tune_id]['hlu']
 
 OUTPUT_DIR = tuning[tune_id]['output_dir']
 import os
