@@ -84,7 +84,7 @@ tuning = [
         'gamma': 0.99,
         'max_eps': 1,
         'min_eps': 0.1,
-        'lambda': 0.0001,
+        'lambda': 0.00001,
         'utf': 1000,
         'uf': 10,
         'hlu': 64,
@@ -98,7 +98,7 @@ tuning = [
         'gamma': 0.99,
         'max_eps': 1,
         'min_eps': 0.1,
-        'lambda': 0.00001,
+        'lambda': 0.0001,
         'utf': 1000,
         'uf': 10,
         'hlu': 64,
@@ -112,7 +112,7 @@ tuning = [
         'gamma': 0.999,
         'max_eps': 1,
         'min_eps': 0.1,
-        'lambda': 0.00001,
+        'lambda': 0.0001,
         'utf': 1000,
         'uf': 10,
         'hlu': 64,
@@ -154,7 +154,7 @@ LAMBDA = tuning[tune_id]['lambda']  # speed of decay
 UPDATE_TARGET_FREQUENCY = tuning[tune_id]['utf']
 UPDATE_FREQUENCY = tuning[tune_id]['uf']   # how often to replay batch and train
 TRAINING_EPISODES = 50000
-HIDDEN_LAYER_UNITS   = tuning[tune_id]['hlu']
+HIDDEN_LAYER_UNITS = tuning[tune_id]['hlu']
 
 OUTPUT_DIR = tuning[tune_id]['output_dir']
 import os
@@ -181,7 +181,7 @@ class Brain:
     def _createModel(self):
         model = Sequential()
 
-        model.add(Dense(units=50, activation='relu', input_dim=stateCnt))
+        model.add(Dense(units=HIDDEN_LAYER_UNITS, activation='relu', input_dim=stateCnt))
         # model.add(Dense(units=64, activation='relu'))
         model.add(Dense(units=actionCnt, activation='linear'))
 
