@@ -10,6 +10,7 @@
 # author: Jaromir Janisch, 2016
 
 import random, numpy, math, gym, sys
+import sys
 from keras import backend as K
 
 import tensorflow as tf
@@ -18,23 +19,87 @@ mpl.use('Agg')
 import matplotlib.pyplot as plt
 from SumTree import SumTree
 
+tuning = [
+    {
+        'lr': 0.0001,
+        'memory': 500000,
+        'batch': 64,
+        'gamma': 0.99,
+        'max_eps': 1,
+        'min_eps': 0.1,
+        'lambda': 0.0001,
+        'utf': 1000,
+        'uf': 10,
+        'output_dir': './dqn-per-small-local1',
+        'output_name': 'LunarLander-DQN-PER'
+    },
+    {
+        'lr': 0.0001,
+        'memory': 500000,
+        'batch': 256,
+        'gamma': 0.99,
+        'max_eps': 1,
+        'min_eps': 0.1,
+        'lambda': 0.00001,
+        'utf': 1000,
+        'uf': 10,
+        'output_dir': './dqn-per-small-local2',
+        'output_name': 'LunarLander-DQN-PER'
+    },
+    {
+        'lr': 0.0001,
+        'memory': 500000,
+        'batch': 512,
+        'gamma': 0.999,
+        'max_eps': 1,
+        'min_eps': 0.1,
+        'lambda': 0.00001,
+        'utf': 1000,
+        'uf': 10,
+        'output_dir': './dqn-per-small-local3',
+        'output_name': 'LunarLander-DQN-PER'
+    },
+    {
+        'lr': 0.0001,
+        'memory': 500000,
+        'batch': 512,
+        'gamma': 0.99,
+        'max_eps': 1,
+        'min_eps': 0.1,
+        'lambda': 0.0001,
+        'utf': 1000,
+        'uf': 10,
+        'output_dir': './dqn-per-small-local4',
+        'output_name': 'LunarLander-DQN-PER'
+    },
+
+]
+
 # ----------
-# HUBER_LOSS_DELTA = 1.0
-LEARNING_RATE = 0.0001
+tune_id = int(sys.argv[1])
 
+LEARNING_RATE = tuning[tune_id]['lr']
 
-# ----------
+# -------------------- AGENT ---------------------------
+MEMORY_CAPACITY = tuning[tune_id]['memory']
+BATCH_SIZE = tuning[tune_id]['batch']
 
-# def huber_loss(y_true, y_pred):
-#     err = y_true - y_pred
-#     print(K.abs(err))
-#     cond = K.abs(err) < HUBER_LOSS_DELTA
-#     L2 = 0.5 * K.square(err)
-#     L1 = HUBER_LOSS_DELTA * (K.abs(err) - 0.5 * HUBER_LOSS_DELTA)
-#
-#     loss = tf.where(cond, L2, L1)  # Keras does not cover where function in tensorflow :-(
-#
-#     return K.mean(loss)
+GAMMA = tuning[tune_id]['gamma']
+
+MAX_EPSILON = tuning[tune_id]['max_eps']
+MIN_EPSILON = tuning[tune_id]['min_eps']
+LAMBDA = tuning[tune_id]['lambda']  # speed of decay
+
+UPDATE_TARGET_FREQUENCY = tuning[tune_id]['utf']
+UPDATE_FREQUENCY = tuning[tune_id]['uf']   # how often to replay batch and train
+TRAINING_EPISODES = 50000
+
+OUTPUT_DIR = tuning[tune_id]['output_dir']
+import os
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+OUTPUT_NAME = tuning[tune_id]['output_name']
+file = open(OUTPUT_DIR + '/' + OUTPUT_NAME + '.txt', 'w+')
 
 
 # -------------------- BRAIN ---------------------------
@@ -111,26 +176,6 @@ class Memory:   # stored as ( s, a, r, s_ ) in SumTree
     def update(self, idx, error):
         p = self._getPriority(error)
         self.tree.update(idx, p)
-
-
-# -------------------- AGENT ---------------------------
-MEMORY_CAPACITY = 2 ** 16
-BATCH_SIZE = 64
-
-GAMMA = 0.999
-
-MAX_EPSILON = 1
-MIN_EPSILON = 0.1
-LAMBDA = 0.00001  # speed of decay
-OUTPUT_DIR = './dqn-per-small'
-import os
-if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
-OUTPUT_NAME = 'LunarLander-DQN-PER'
-file = open(OUTPUT_DIR + '/' + OUTPUT_NAME + '.txt', 'w+')
-
-UPDATE_TARGET_FREQUENCY = 1000
-TRAINING_EPISODES = 50000
 
 
 class Agent:
@@ -276,7 +321,8 @@ class Environment:
                 s_ = None
 
             agent.observe((s, a, r, s_))
-            agent.replay()
+            if steps % UPDATE_FREQUENCY == 0:
+                agent.replay()
 
             s = s_
             R += r
