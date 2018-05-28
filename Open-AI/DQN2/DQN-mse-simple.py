@@ -17,23 +17,63 @@ import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
 
+tuning = [
+    {
+        'lr': 0.0001,
+        'memory': 500000,
+        'batch': 512,
+        'gamma': 0.99,
+        'max_eps': 1,
+        'min_eps': 0.1,
+        'lambda': 0.0001,
+        'utf': 1000,
+        'uf': 10,
+        'hlu': 50,
+        'output_dir': './dqn-small-local1',
+        'output_name': 'LunarLander-DQN-PER'
+    },
+    {
+        'lr': 0.0001,
+        'memory': 500000,
+        'batch': 256,
+        'gamma': 0.99,
+        'max_eps': 1,
+        'min_eps': 0.1,
+        'lambda': 0.0001,
+        'utf': 1000,
+        'uf': 10,
+        'hlu': 64,
+        'output_dir': './dqn-small-local2',
+        'output_name': 'LunarLander-DQN-PER'
+    }
+]
+
 # ----------
-# HUBER_LOSS_DELTA = 1.0
-LEARNING_RATE = 0.0001
+tune_id = int(sys.argv[1])
 
+LEARNING_RATE = tuning[tune_id]['lr']
 
-# ----------
+# -------------------- AGENT ---------------------------
+MEMORY_CAPACITY = tuning[tune_id]['memory']
+BATCH_SIZE = tuning[tune_id]['batch']
 
-# def huber_loss(y_true, y_pred):
-#     err = y_true - y_pred
-#     print(K.abs(err))
-#     cond = K.abs(err) < HUBER_LOSS_DELTA
-#     L2 = 0.5 * K.square(err)
-#     L1 = HUBER_LOSS_DELTA * (K.abs(err) - 0.5 * HUBER_LOSS_DELTA)
-#
-#     loss = tf.where(cond, L2, L1)  # Keras does not cover where function in tensorflow :-(
-#
-#     return K.mean(loss)
+GAMMA = tuning[tune_id]['gamma']
+
+MAX_EPSILON = tuning[tune_id]['max_eps']
+MIN_EPSILON = tuning[tune_id]['min_eps']
+LAMBDA = tuning[tune_id]['lambda']  # speed of decay
+
+UPDATE_TARGET_FREQUENCY = tuning[tune_id]['utf']
+UPDATE_FREQUENCY = tuning[tune_id]['uf']   # how often to replay batch and train
+TRAINING_EPISODES = 50000
+HIDDEN_LAYER_UNITS = tuning[tune_id]['hlu']
+
+OUTPUT_DIR = tuning[tune_id]['output_dir']
+import os
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+OUTPUT_NAME = tuning[tune_id]['output_name']
+file = open(OUTPUT_DIR + '/' + OUTPUT_NAME + '.txt', 'w+')
 
 
 # -------------------- BRAIN ---------------------------
@@ -53,7 +93,7 @@ class Brain:
     def _createModel(self):
         model = Sequential()
 
-        model.add(Dense(units=64, activation='relu', input_dim=stateCnt))
+        model.add(Dense(units=HIDDEN_LAYER_UNITS, activation='relu', input_dim=stateCnt))
         # model.add(Dense(units=64, activation='relu'))
         model.add(Dense(units=actionCnt, activation='linear'))
 
@@ -99,25 +139,6 @@ class Memory:  # stored as ( s, a, r, s_ )
         return len(self.samples) >= self.capacity
 
 
-# -------------------- AGENT ---------------------------
-MEMORY_CAPACITY = 500000
-BATCH_SIZE = 512
-
-GAMMA = 0.999
-
-MAX_EPSILON = 1.0
-MIN_EPSILON = 0.1
-LAMBDA = 0.00001  # speed of decay
-OUTPUT_DIR = './dqn-mse-simple'
-import os
-if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
-OUTPUT_NAME = 'LunarLander-DQN-mse'
-file = open(OUTPUT_DIR + '/' + OUTPUT_NAME + '.txt', 'w+')
-TRAINING_EPISODES = 50000
-UPDATE_TARGET_FREQUENCY = 1000
-
-
 class Agent:
     steps = 0
     epsilon = MAX_EPSILON
@@ -150,7 +171,10 @@ class Agent:
 
         # slowly decrease Epsilon based on our experience
         self.steps += 1
-        self.epsilon = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self.steps)
+        if abs(self.epsilon - MIN_EPSILON) < 0.0001:
+            self.epsilon = MIN_EPSILON
+        else:
+            self.epsilon = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self.steps)
 
     def replay(self):
         batch = self.memory.sample(BATCH_SIZE)
@@ -221,7 +245,8 @@ class Environment:
                 s_ = None
 
             agent.observe((s, a, r, s_))
-            agent.replay()
+            if steps % UPDATE_FREQUENCY == 0:
+                agent.replay()
 
             s = s_
             R += r

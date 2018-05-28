@@ -10,7 +10,6 @@
 # author: Jaromir Janisch, 2016
 
 import random, numpy, math, gym, sys
-import sys
 from keras import backend as K
 
 import tensorflow as tf
