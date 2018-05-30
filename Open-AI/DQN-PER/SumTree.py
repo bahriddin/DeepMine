@@ -5,10 +5,18 @@ class SumTree:
 
     def __init__(self, capacity):
         self.capacity = capacity
+        # Implementing tree using similar to priority queue data structure
         self.tree = numpy.zeros( 2*capacity - 1 )
         self.data = numpy.zeros( capacity, dtype=object )
+        self.write = 0
 
     def _propagate(self, idx, change):
+        """
+        Back propagate to the root to update their value
+        :param idx:
+        :param change:
+        :return:
+        """
         parent = (idx - 1) // 2
 
         self.tree[parent] += change
