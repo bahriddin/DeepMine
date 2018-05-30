@@ -10,6 +10,7 @@
 # author: Jaromir Janisch, 2016
 
 import random, numpy, math, gym, sys
+import keras
 from keras import backend as K
 
 import tensorflow as tf
@@ -25,26 +26,12 @@ tuning = [
         'gamma': 0.99,
         'max_eps': 1,
         'min_eps': 0.1,
-        'lambda': 0.0001,
+        'annealing_steps': 10000,
         'utf': 1000,
         'uf': 10,
         'hlu': 50,
-        'output_dir': './dqn-small-local1',
-        'output_name': 'LunarLander-DQN-PER'
-    },
-    {
-        'lr': 0.0001,
-        'memory': 500000,
-        'batch': 256,
-        'gamma': 0.99,
-        'max_eps': 1,
-        'min_eps': 0.1,
-        'lambda': 0.0001,
-        'utf': 1000,
-        'uf': 10,
-        'hlu': 64,
-        'output_dir': './dqn-small-local2',
-        'output_name': 'LunarLander-DQN-PER'
+        'output_dir': './dqn-final',
+        'output_name': 'LunarLander-DQN'
     }
 ]
 
@@ -61,7 +48,7 @@ GAMMA = tuning[tune_id]['gamma']
 
 MAX_EPSILON = tuning[tune_id]['max_eps']
 MIN_EPSILON = tuning[tune_id]['min_eps']
-LAMBDA = tuning[tune_id]['lambda']  # speed of decay
+ANNEALING_STEPS = tuning[tune_id]['annealing_steps']  # speed of decay
 
 UPDATE_TARGET_FREQUENCY = tuning[tune_id]['utf']
 UPDATE_FREQUENCY = tuning[tune_id]['uf']   # how often to replay batch and train
@@ -89,6 +76,7 @@ class Brain:
 
         self.model = self._createModel()
         self.model_ = self._createModel()
+        self.history = LossHistory()
 
     def _createModel(self):
         model = Sequential()
@@ -103,7 +91,8 @@ class Brain:
         return model
 
     def train(self, x, y, epochs=1, verbose=0):
-        self.model.fit(x, y, batch_size=BATCH_SIZE, epochs=epochs, verbose=verbose)
+        self.model.fit(x, y, batch_size=BATCH_SIZE, epochs=epochs, verbose=verbose, callbacks=[self.history])
+        lossesList.extend(self.history.losses)
 
     def predict(self, s, target=False):
         if target:
@@ -116,6 +105,13 @@ class Brain:
 
     def updateTargetModel(self):
         self.model_.set_weights(self.model.get_weights())
+
+class LossHistory(keras.callbacks.Callback):
+    def on_train_begin(self, logs={}):
+        self.losses = []
+
+    def on_batch_end(self, batch, logs={}):
+        self.losses.append(logs.get('loss'))
 
 
 # -------------------- MEMORY --------------------------
@@ -171,10 +167,10 @@ class Agent:
 
         # slowly decrease Epsilon based on our experience
         self.steps += 1
-        if abs(self.epsilon - MIN_EPSILON) < 0.0001:
-            self.epsilon = MIN_EPSILON
+        if self.steps < ANNEALING_STEPS:
+            self.epsilon = MAX_EPSILON - (MAX_EPSILON - MIN_EPSILON) / ANNEALING_STEPS * self.steps
         else:
-            self.epsilon = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self.steps)
+            self.epsilon = MIN_EPSILON
 
     def replay(self):
         batch = self.memory.sample(BATCH_SIZE)
@@ -255,7 +251,8 @@ class Environment:
                 break
         if isinstance(agent, Agent):
             rList.append(R)
-            stepList.append(steps)
+            stepsList.append(steps)
+
             lenRList = len(rList)
             print('Episode ' + str(lenRList) + " reward " + str(R) + ' in ' + str(steps) + ' steps, epsilon=' + str(agent.epsilon))
             file.write('Episode ' + str(lenRList) + " reward " + str(R) + ' in ' + str(steps) + ' steps, epsilon=' + str(agent.epsilon))
@@ -276,8 +273,9 @@ class Environment:
                 # Save memory model
                 agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + ".h5")
                 # Save reward list
-                np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-rList", rList)
-                np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-stepList", stepList)
+                np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-rewards", rList)
+                np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-steps", stepsList)
+                np.save(OUTPUT_DIR + "/" + OUTPUT_NAME + str(self.index) + "-losses", lossesList)
 
 
 # -------------------- MAIN ----------------------------
@@ -291,7 +289,8 @@ agent = Agent(stateCnt, actionCnt)
 randomAgent = RandomAgent(actionCnt)
 
 rList = []
-stepList = []
+stepsList = []
+lossesList = []
 
 try:
     while randomAgent.memory.isFull() == False:
