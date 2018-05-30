@@ -33,7 +33,21 @@ tuning = [
         'hlu': 50,
         'output_dir': './dqn-per-final',
         'output_name': 'LunarLander-DQN-PER'
-    }
+    },
+    {
+        'lr': 0.0001,
+        'memory': 500000,
+        'batch': 512,
+        'gamma': 0.99,
+        'max_eps': 1,
+        'min_eps': 0.1,
+        'annealing_steps': 10000,
+        'utf': 1000,
+        'uf': 10,
+        'hlu': 50,
+        'output_dir': './dqn-per-final2',
+        'output_name': 'LunarLander-DQN-PER'
+    },
 ]
 
 # ----------
