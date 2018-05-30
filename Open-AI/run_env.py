@@ -36,11 +36,14 @@ def main(argv):
             e = float(arg)
     path += "/"+str(learning_rate)
     reward_path = path+'/dqn_rlist'
+    step_path = path + '/dqn_slist'
+
+    loss_path = path + '/dqn_llist'
 
 
     env = gym.make('LunarLander-v2')
     env.reset()
-    RL = RL(env,learning_rate,e,path=path,load_model = False)
+    RL = RL(env,learning_rate,e,path=path, load_model = False)
     show = False  # Whether to show the game or not
 
     def processState(states):
@@ -73,6 +76,7 @@ def main(argv):
 
             RL.learn(s, a, r, s1, d)
 
+
             rAll += r
             s = s1
 
@@ -81,6 +85,7 @@ def main(argv):
 
         jList.append(j)
         rList.append(rAll)
+        loss = RL.get_loss_history()
 
         # Periodically save the model.
         if i % 1000 == 0:
@@ -88,21 +93,38 @@ def main(argv):
 
         if i > 0 and i % 100 == 0:
 
-            plt.close('all')
-            rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
-            rMean = np.average(rMat, 1)
-            plt.plot(rMean)
-            plt.xlabel('Training episodes (hundreds)')
-            plt.ylabel('Average rewards every 100 episodes')
-            # plt.xticks(np.array([x for x in range(len(rMean))]))
-            if show:
-                plt.show(block=False)
-            plt.savefig(path+"/training.png")
+
+            # plt.close('all')
+            # rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
+            # rMean = np.average(rMat, 1)
+            # plt.plot(rMean)
+            # plt.xlabel('Training episodes (hundreds)')
+            # plt.ylabel('Average rewards every 100 episodes')
+            # # plt.xticks(np.array([x for x in range(len(rMean))]))
+            # if show:
+            #     plt.show(block=False)
+            # plt.savefig(path+"/training.png")
 
             np.save(reward_path, np.array(rList))
+            np.save(step_path, np.array(jList))
+            np.save(loss_path, loss)
+            if len(loss)> 0:
+                plt.close('all')
+                lMat = np.resize(np.array(loss), [len(loss) // 100, 100])
+                lMean = np.average(lMat, 1)
+                plt.plot(lMean)
+                plt.xlabel('Training episodes (hundreds)')
+                plt.ylabel('Average loss every 100 episodes')
+                # plt.xticks(np.array([x for x in range(len(rMean))]))
+                if show:
+                    plt.show(block=False)
+                plt.savefig(path + "/training_loss.png")
 
-        if i % 10 == 0:
-            print(RL.total_steps, np.mean(rList[-10:]), RL.e)
+
+
+        if i > 0 and i % 10 == 0:
+            # print(rList[-1:])
+            print(RL.total_steps, np.mean(jList[-10:]), np.mean(rList[-10:]), RL.e, np.mean(loss[-10:]))
         i += 1
 
 

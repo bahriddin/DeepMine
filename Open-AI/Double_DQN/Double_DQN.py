@@ -36,12 +36,13 @@ class RL():
         self.sess.run(init)
 
         self.path = path  # The path to save our model to.
+        self.loss_history = []
 
         # Make a path for our model to be saved in.
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-        self.saver = tf.train.Saver()
+        self.saver = tf.train.Saver(max_to_keep = None)
         self.save_count = 0
 
 
@@ -72,11 +73,8 @@ class RL():
             # The network recieves a frame from the game, flattened into an array.
             # It then resizes it and processes it through four convolutional layers.
             self.scalarInput = tf.placeholder(shape=[None, h_size ], dtype=tf.float32)
-
             w_initializer, b_initializer = tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)
-
             self.l1 = tf.layers.dense(self.scalarInput, 50, tf.nn.relu, kernel_initializer=w_initializer, bias_initializer=b_initializer)
-
             xavier_init = tf.contrib.layers.xavier_initializer()
             self.Qout = tf.layers.dense(self.l1, self.n_actions, kernel_initializer=xavier_init,
                                           bias_initializer=b_initializer)
@@ -133,13 +131,18 @@ class RL():
                 doubleQ = Q2[range(self.batch_size), Q1]
                 targetQ = trainBatch[:, 2] + (self.y * doubleQ * end_multiplier)
                 # Update the network with our target values.
-                _ = self.sess.run(self.mainQN.updateModel, \
+                _ ,loss = self.sess.run([self.mainQN.updateModel,self.mainQN.loss], \
                              feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]), self.mainQN.targetQ: targetQ,
                                         self.mainQN.actions: trainBatch[:, 1]})
+                self.loss_history.append(loss)
                 self.updateTarget(self.targetOps)  # Update the target network toward the primary network.
+
 
         if d == True:
             self.myBuffer.add(self.episodeBuffer.buffer)
+
+    def get_loss_history(self):
+        return np.array(self.loss_history)
 
     def updateTargetGraph(self, tfVars, tau):
         total_vars = len(tfVars)
@@ -154,10 +157,10 @@ class RL():
             self.sess.run(op)
 
     def save_model(self,i):
-        self.saver.save(self.sess, self.path + '/' + str(self.save_count) + '/model-' + str(i) + '.ckpt')
-        if i % 5000 == 0:
-            self.save_count += 1
-            self.saver = tf.train.Saver()
+        self.saver.save(self.sess, self.path +  '/model-' + str(i) + '.ckpt')
+        # if i % 5000 == 0:
+        #     self.save_count += 1
+        #     self.saver = tf.train.Saver()
         print("Saved Model")
 
     class experience_buffer():

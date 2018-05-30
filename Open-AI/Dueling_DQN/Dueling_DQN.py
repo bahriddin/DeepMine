@@ -36,12 +36,13 @@ class RL():
         self.sess.run(init)
 
         self.path = path  # The path to save our model to.
+        self.loss_history = []
 
         # Make a path for our model to be saved in.
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-        self.saver = tf.train.Saver()
+        self.saver = tf.train.Saver(max_to_keep=None)
         self.save_count = 0
 
 
@@ -129,13 +130,18 @@ class RL():
                 # doubleQ = Q2[range(self.batch_size), Q1]
                 targetQ = trainBatch[:, 2] + (self.y * np.max(Q1, axis=1) * end_multiplier)#* doubleQ * end_multiplier)
                 # Update the network with our target values.
-                _ = self.sess.run(self.mainQN.updateModel, \
-                             feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]), self.mainQN.targetQ: targetQ,
-                                        self.mainQN.actions: trainBatch[:, 1]})
+                _, loss = self.sess.run([self.mainQN.updateModel, self.mainQN.loss], \
+                                        feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]),
+                                                   self.mainQN.targetQ: targetQ,
+                                                   self.mainQN.actions: trainBatch[:, 1]})
+                self.loss_history.append(loss)
                 self.updateTarget(self.targetOps)  # Update the target network toward the primary network.
 
         if d == True:
             self.myBuffer.add(self.episodeBuffer.buffer)
+
+    def get_loss_history(self):
+        return np.array(self.loss_history)
 
     def updateTargetGraph(self, tfVars, tau):
         total_vars = len(tfVars)
@@ -149,11 +155,11 @@ class RL():
         for op in op_holder:
             self.sess.run(op)
 
-    def save_model(self,i):
-        self.saver.save(self.sess, self.path + '/' + str(self.save_count) + '/model-' + str(i) + '.ckpt')
-        if i % 5000 == 0:
-            self.save_count += 1
-            self.saver = tf.train.Saver()
+    def save_model(self, i):
+        self.saver.save(self.sess, self.path + '/model-' + str(i) + '.ckpt')
+        # if i % 5000 == 0:
+        #     self.save_count += 1
+        #     self.saver = tf.train.Saver()
         print("Saved Model")
 
     class experience_buffer():

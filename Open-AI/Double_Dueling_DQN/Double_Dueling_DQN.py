@@ -36,12 +36,14 @@ class RL():
         self.sess.run(init)
 
         self.path = path  # The path to save our model to.
+        self.loss_history = []
+
 
         # Make a path for our model to be saved in.
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-        self.saver = tf.train.Saver()
+        self.saver = tf.train.Saver(max_to_keep=None)
         self.save_count= 0
 
 
@@ -129,9 +131,11 @@ class RL():
                 doubleQ = Q2[range(self.batch_size), Q1]
                 targetQ = trainBatch[:, 2] + (self.y * doubleQ * end_multiplier)
                 # Update the network with our target values.
-                _ = self.sess.run(self.mainQN.updateModel, \
-                             feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]), self.mainQN.targetQ: targetQ,
-                                        self.mainQN.actions: trainBatch[:, 1]})
+                _, loss = self.sess.run([self.mainQN.updateModel, self.mainQN.loss], \
+                                        feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]),
+                                                   self.mainQN.targetQ: targetQ,
+                                                   self.mainQN.actions: trainBatch[:, 1]})
+                self.loss_history.append(loss)
                 self.updateTarget(self.targetOps)  # Update the target network toward the primary network.
 
         if d == True:
@@ -145,15 +149,18 @@ class RL():
                 (var.value() * tau) + ((1 - tau) * tfVars[idx + total_vars // 2].value())))
         return op_holder
 
+    def get_loss_history(self):
+        return np.array(self.loss_history)
+
     def updateTarget(self, op_holder):
         for op in op_holder:
             self.sess.run(op)
 
-    def save_model(self,i):
-        self.saver.save(self.sess, self.path  +'/'+str(self.save_count)+'/model-' + str(i) + '.ckpt')
-        if i %5000 == 0:
-            self.save_count +=1
-            self.saver = tf.train.Saver()
+    def save_model(self, i):
+        self.saver.save(self.sess, self.path + '/model-' + str(i) + '.ckpt')
+        # if i % 5000 == 0:
+        #     self.save_count += 1
+        #     self.saver = tf.train.Saver()
         print("Saved Model")
 
 
@@ -171,66 +178,3 @@ class RL():
 
         def sample(self, size):
             return np.reshape(np.array(random.sample(self.buffer, size)), [size, 5])
-
-
-#
-# env = gym.make('CartPole-v1')
-# env.reset()
-# RL = Double_Dueling_DQN(env)
-#
-#
-# def processState(states):
-#     return np.reshape(states, [reduce(mul, list(env.observation_space.shape), 1)])
-#
-# max_epLength = 1000  # The max allowed length of our episode.
-#
-#
-#
-# # create lists to contain total rewards and steps per episode
-# jList = []
-# rList = []
-# total_steps = 0
-#
-# i = 0
-# while True:
-#     # Reset environment and get first new observation
-#     s = env.reset()
-#     s = processState(s)
-#     d = False
-#     rAll = 0
-#     j = 0
-#     # The Q-Network
-#     while j < max_epLength:  # If the agent takes longer than 1000 moves to reach the end, end the trial.
-#         # env.render()
-#         j += 1
-#         a = RL.choose_action(total_steps)
-#         s1, r, d, info = env.step(a)
-#         s1 = processState(s1)
-#         total_steps += 1
-#
-#         RL.episodeBuffer.add(
-#             np.reshape(np.array([s, a, r, s1, d]), [1, 5]))  # Save the experience to our episode buffer.
-#         RL.learn(total_steps)
-#
-#         rAll += r
-#         s = s1
-#
-#         if d == True:
-#             break
-#     RL.myBuffer.add(RL.episodeBuffer.buffer)
-#
-#     jList.append(j)
-#     rList.append(rAll)
-#     # Periodically save the model.
-#     if i > 0 and i % 1000 == 0:
-#         RL.save_model()
-#         plt.close('all')
-#         # rMat = np.resize(np.array(rList), [len(rList) // 100, 100])
-#         # rMean = np.average(rMat, 1)
-#         plt.plot(np.array(rList))
-#         plt.show(block=False)
-#     if len(rList) % 10 == 0:
-#         print(total_steps, np.mean(rList[-10:]), RL.e)
-#     i += 1
-
-# print("Percent of succesful episodes: " + str(sum(rList) / num_episodes) + "%")
