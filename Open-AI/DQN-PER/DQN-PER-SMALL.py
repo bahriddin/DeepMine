@@ -318,6 +318,7 @@ class Environment:
             rewards.append(R)
             print('experiment #' + str(i+1) + ': ' + str(R))
         print('Average reward:', np.average(rewards))
+        print('Standard deviation:', np.std(rewards))
         np.save(OUTPUT_DIR + "/experiment_results", rewards)
 
     def run(self, agent):
