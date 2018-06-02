@@ -71,11 +71,9 @@ TRAINING_EPISODES = 50000
 HIDDEN_LAYER_UNITS = tuning[tune_id]['hlu']
 
 OUTPUT_DIR = tuning[tune_id]['output_dir']
-import os
-if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
+
 OUTPUT_NAME = tuning[tune_id]['output_name']
-file = open(OUTPUT_DIR + '/' + OUTPUT_NAME + '.txt', 'w+')
+
 
 
 # -------------------- BRAIN ---------------------------
@@ -92,6 +90,7 @@ class Brain:
         self.model = self._createModel()
         self.model_ = self._createModel()
         self.history = LossHistory()
+        self.loaded = False
 
     def _createModel(self):
         model = Sequential()
@@ -120,6 +119,19 @@ class Brain:
 
     def updateTargetModel(self):
         self.model_.set_weights(self.model.get_weights())
+
+    def load(self, partno):
+        del self.model
+        if partno > 0:
+            filepath = OUTPUT_DIR + '/' + OUTPUT_NAME + str(partno) + '.h5'
+        else:
+            filepath = OUTPUT_DIR + '/' + OUTPUT_NAME + '-final.h5'
+        self.model = keras.models.load_model(filepath)
+        self.loaded = True
+
+    def isLoaded(self):
+        return self.loaded
+
 
 class LossHistory(keras.callbacks.Callback):
     def on_train_begin(self, logs={}):
@@ -163,12 +175,11 @@ class Memory:   # stored as ( s, a, r, s_ ) in SumTree
 
 
 class Agent:
-    steps = 0
-    epsilon = MAX_EPSILON
-
     def __init__(self, stateCnt, actionCnt):
         self.stateCnt = stateCnt
         self.actionCnt = actionCnt
+        self.steps = 0
+        self.epsilon = MAX_EPSILON
 
         self.brain = Brain(stateCnt, actionCnt)
         # self.memory = Memory(MEMORY_CAPACITY)
@@ -290,7 +301,26 @@ class Environment:
         self.env = gym.make(problem)
         self.index = 0
 
-    def run(self, agent, index=0):
+    def experiment(self, agent):
+        agent.epsilon = 0
+        rewards = []
+        for i in range(100):
+            s = self.env.reset()
+            R = 0
+            done = False
+            while not done:
+                a = agent.act(s)
+                s_, r, d, _ = self.env.step(a)
+                s = s_
+                R += r
+                done = d
+
+            rewards.append(R)
+            print('experiment #' + str(i+1) + ': ' + str(R))
+        print('Average reward:', np.average(rewards))
+        np.save(OUTPUT_DIR + "/experiment_results", rewards)
+
+    def run(self, agent):
         s = self.env.reset()
         R = 0
         steps = 0
@@ -346,32 +376,43 @@ class Environment:
 
 
 # -------------------- MAIN ----------------------------
-PROBLEM = 'LunarLander-v2'
-env = Environment(PROBLEM)
+if __name__ == "__main__":
+    PROBLEM = 'LunarLander-v2'
+    env = Environment(PROBLEM)
 
-stateCnt = env.env.observation_space.shape[0]
-actionCnt = env.env.action_space.n
+    stateCnt = env.env.observation_space.shape[0]
+    actionCnt = env.env.action_space.n
 
-agent = Agent(stateCnt, actionCnt)
-randomAgent = RandomAgent(actionCnt)
+    agent = Agent(stateCnt, actionCnt)
+    randomAgent = RandomAgent(actionCnt)
 
-rList = []
-stepsList = []
-lossesList = []
+    rList = []
+    stepsList = []
+    lossesList = []
 
-try:
-    print("Initialization with random agent...")
-    while randomAgent.exp < MEMORY_CAPACITY:
-        env.run(randomAgent)
-        # print(randomAgent.exp, "/", MEMORY_CAPACITY)
+    if len(sys.argv) == 3:
+        partno = int(sys.argv[2])
+        agent.brain.load(partno)
+        env.experiment(agent)
+    else:
+        try:
+            import os
 
-    agent.memory = randomAgent.memory
+            if not os.path.exists(OUTPUT_DIR):
+                os.makedirs(OUTPUT_DIR)
+            file = open(OUTPUT_DIR + '/' + OUTPUT_NAME + '.txt', 'w+')
+            print("Initialization with random agent...")
+            while randomAgent.exp < MEMORY_CAPACITY:
+                env.run(randomAgent)
+                # print(randomAgent.exp, "/", MEMORY_CAPACITY)
 
-    randomAgent = None
+            agent.memory = randomAgent.memory
 
-    print("Starting learning")
-    for _ in range(TRAINING_EPISODES):
-        env.run(agent)
-finally:
-    file.close()
-    agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + "-final.h5")
+            randomAgent = None
+
+            print("Starting learning")
+            for _ in range(TRAINING_EPISODES):
+                env.run(agent)
+        finally:
+            file.close()
+            agent.brain.model.save(OUTPUT_DIR + "/" + OUTPUT_NAME + "-final.h5")
