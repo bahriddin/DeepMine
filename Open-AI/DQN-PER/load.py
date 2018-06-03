@@ -1,4 +1,5 @@
 import numpy as np
 
-arr = np.load('dqn-per-final/LunarLander-DQN-PER2-rewards.npy')
+arr = np.load('dqn-per-final2/experiment_results.npy')
+arr = np.sort(arr)
 print(arr)
