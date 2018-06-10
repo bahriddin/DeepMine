@@ -1,13 +1,4 @@
-# OpenGym CartPole-v0
-# -------------------
-#
-# This code demonstrates use a full DQN implementation
-# to solve OpenGym CartPole-v0 problem.
-#
-# Made as part of blog series Let's make a DQN, available at:
-# https://jaromiru.com/2016/09/27/lets-make-a-dqn-theory/
-#
-# author: Jaromir Janisch, 2016
+# Forked from: https://github.com/jaara/AI-blog/blob/master/CartPole-DQN.py
 
 import random, numpy, math, gym, sys
 import keras
