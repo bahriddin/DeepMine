@@ -22,3 +22,12 @@ In each 100 episode model is saved with '.h5' extension. So in order to load mod
 ```cd Open-AI/DQN-PER```
 
   All the other part is same with DQN's running.
+  
+3. **Policy Gradient**
+```cd Open-AI/PG```
+```python3 0.001_loss_steps.py.py```
+
+4. **A3C**
+```cd Open-AI/A3C```
+```python3 raw_A3C.py```
+
