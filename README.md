@@ -1,5 +1,5 @@
-# DeepMine
-AI Research project with Open AI platform.
+# DeepMine - Survey of different flavours of Deep Reinforcement Learning
+In this project we chose 6 most recent deep reinforcement learning algorithms, made an experience using Open AI's Lunar Lander environment and analyzed result.
 
 # How to run?
 
